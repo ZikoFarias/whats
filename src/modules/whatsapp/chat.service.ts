@@ -5,17 +5,33 @@ import { onMessageSent } from "@/lib/webhook";
 import Sticker from "wa-sticker-formatter";
 import type { InteractiveMessagePayload, AlbumItem } from "./interactive";
 
+/**
+ * Chat list filter:
+ * - "all": every chat except status/broadcast lists
+ * - "private": only 1:1 chats (no groups, broadcasts or newsletters)
+ * - "groups": only group chats (@g.us)
+ */
+export type ChatListFilter = "all" | "private" | "groups";
+
+const CHAT_FILTER_SQL: Record<ChatListFilter, string> = {
+    all: "AND m1.remoteJid NOT LIKE '%@broadcast'",
+    private: "AND m1.remoteJid NOT LIKE '%@g.us' AND m1.remoteJid NOT LIKE '%@broadcast' AND m1.remoteJid NOT LIKE '%@newsletter'",
+    groups: "AND m1.remoteJid LIKE '%@g.us'",
+};
+
 export class ChatService {
     /**
      * Get active chats list for a session with last message preview.
      * Cursor-based pagination — `before` is ISO timestamp of last seen chat.
      * Returns chats with last message timestamp < before (older).
+     * `filter` is optional; when omitted no JID filtering is applied (API behavior).
      */
     static async getChatsList(
         dbSessionId: string,
         limit = 50,
         before?: string,
-        search?: string
+        search?: string,
+        filter?: ChatListFilter
     ) {
         // 1. Get latest message per remoteJid with cursor pagination
         // Uses m1.timestamp < before (when provided) to load older chats
@@ -40,6 +56,7 @@ export class ChatService {
             ) m2 ON m1.remoteJid = m2.remoteJid AND m1.timestamp = m2.max_ts
             WHERE m1.sessionId = ?
             ${before ? 'AND m1.timestamp < ?' : ''}
+            ${filter && Object.hasOwn(CHAT_FILTER_SQL, filter) ? CHAT_FILTER_SQL[filter] : ''}
             ORDER BY m1.timestamp DESC
             LIMIT ?
         `, ...qParams);
