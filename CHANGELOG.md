@@ -1,3 +1,11 @@
+## [Unreleased]
+
+### Added
+- **Chat List Filter**: Added `All` / `Chats` / `Groups` tabs to the chat list. Filtering is done in SQL so pagination stays correct, realtime updates respect the active tab, and the selection is remembered per browser.
+
+### Fixed
+- **Status Broadcast in Chat List**: `status@broadcast` no longer appears as a chat in the dashboard chat list. The REST API (`getChatsList` without a filter) is unchanged.
+
 ## [v1.7.0-beta.1] - 2026-09-21
 
 ### Added

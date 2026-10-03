@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { getChatsStatus } from "@/app/dashboard/chat/actions";
 import { useSocket } from "./socket-context";
 import { toast } from "sonner";
+import type { ChatListFilter } from "@/modules/whatsapp/chat.service";
 
 interface ChatContact {
     jid: string;
@@ -40,6 +41,30 @@ interface ChatListProps {
 }
 
 const PAGE_SIZE = parseInt(process.env.NEXT_PUBLIC_CHAT_PAGE_SIZE || "50", 10);
+
+const FILTER_STORAGE_KEY = "chat-list-filter";
+const FILTER_OPTIONS: { value: ChatListFilter; label: string }[] = [
+    { value: "all", label: "All" },
+    { value: "private", label: "Chats" },
+    { value: "groups", label: "Groups" },
+];
+
+function readStoredFilter(): ChatListFilter {
+    try {
+        const stored = localStorage.getItem(FILTER_STORAGE_KEY);
+        if (FILTER_OPTIONS.some(o => o.value === stored)) return stored as ChatListFilter;
+    } catch { /* storage unavailable */ }
+    return "all";
+}
+
+// Client-side mirror of the SQL filter in ChatService.getChatsList (used for realtime updates)
+function matchesFilter(jid: string, filter: ChatListFilter): boolean {
+    if (jid.endsWith("@broadcast")) return false;
+    const isGroup = jid.endsWith("@g.us");
+    if (filter === "groups") return isGroup;
+    if (filter === "private") return !isGroup && !jid.endsWith("@newsletter");
+    return true;
+}
 
 function getDisplayName(chat: ChatContact): string {
     return chat.name || chat.notify || chat.jid.split('@')[0];
@@ -265,6 +290,8 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
     const [isNewChatOpen, setIsNewChatOpen] = useState(false);
     const [newChatNumber, setNewChatNumber] = useState("");
     const [hasMore, setHasMore] = useState(true);
+    const [filter, setFilter] = useState<ChatListFilter>("all");
+    const [filterReady, setFilterReady] = useState(false);
     // Label dots per JID — {colorHex}[]
     const [chatLabelMap, setChatLabelMap] = useState<Map<string, {colorHex: string}[]>>(new Map());
 
@@ -274,14 +301,30 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
     const chatsRef = useRef<ChatContact[]>(chats);
     chatsRef.current = chats;
     const fetchingRef = useRef(false);
+    // Incremented on every list reset so responses from a previous filter/search are discarded
+    const requestIdRef = useRef(0);
+
+    // Load persisted filter after mount (localStorage is unavailable during SSR)
+    useEffect(() => {
+        setFilter(readStoredFilter());
+        setFilterReady(true);
+    }, []);
+
+    const handleFilterChange = (value: ChatListFilter) => {
+        if (value === filter) return;
+        setFilter(value);
+        try { localStorage.setItem(FILTER_STORAGE_KEY, value); } catch { /* storage unavailable */ }
+    };
 
     const fetchChats = useCallback(async (cursor?: string, append = false) => {
         if (fetchingRef.current) return;
         fetchingRef.current = true;
+        const requestId = requestIdRef.current;
         try {
             if (!cursor) setLoading(true);
-            const rawChats: any = await getChatsStatus(sessionId, PAGE_SIZE, cursor || undefined, searchQuery || undefined);
-            
+            const rawChats: any = await getChatsStatus(sessionId, PAGE_SIZE, cursor || undefined, searchQuery || undefined, filter);
+            if (requestId !== requestIdRef.current) return;
+
             const processChats = (newChatsList: ChatContact[], existingChatsList: ChatContact[] = []) => {
                 const merged = new Map(existingChatsList.map(c => [c.jid, c]));
                 (newChatsList || []).forEach((c: any) => {
@@ -302,12 +345,21 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
         } catch (error) {
             console.error("Failed to load chats", error);
         } finally {
-            setLoading(false);
-            fetchingRef.current = false;
+            if (requestId === requestIdRef.current) {
+                setLoading(false);
+                fetchingRef.current = false;
+            }
         }
-    }, [sessionId, searchQuery]);
+    }, [sessionId, searchQuery, filter]);
 
-    useEffect(() => { setChats([]); setHasMore(true); fetchChats(); }, [fetchChats]);
+    useEffect(() => {
+        if (!filterReady) return;
+        requestIdRef.current++;
+        fetchingRef.current = false;
+        setChats([]);
+        setHasMore(true);
+        fetchChats();
+    }, [fetchChats, filterReady]);
 
     useEffect(() => {
         const socket = getSocket();
@@ -315,7 +367,9 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
         const onConnect = () => joinSession(sessionId);
         if (socket.connected) joinSession(sessionId);
         socket.on("connect", onConnect);
-        const handler = async (newMessages: any[]) => {
+        const handler = async (incoming: any[]) => {
+            const newMessages = incoming.filter(msg => msg.remoteJid && matchesFilter(msg.remoteJid, filter));
+            if (newMessages.length === 0) return;
             let needsReload = false;
             setChats(prev => {
                 const updated = [...prev];
@@ -337,7 +391,7 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
         };
         socket.on("message.update", handler);
         return () => { socket.off("connect", onConnect); socket.off("message.update", handler); };
-    }, [sessionId, getSocket, joinSession, fetchChats]);
+    }, [sessionId, getSocket, joinSession, fetchChats, filter]);
 
     // Fetch label assignments for all chats
     useEffect(() => {
@@ -401,16 +455,9 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
         setNewChatNumber("");
     };
 
-    if (loading && chats.length === 0) {
-        return (
-            <div className="flex flex-col h-full overflow-hidden">
-                <div className="p-3 space-y-3">
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                    {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
-                </div>
-            </div>
-        );
-    }
+    const emptyLabel = searchQuery
+        ? "No chats match your search"
+        : filter === "groups" ? "No groups yet" : "No chats yet";
 
     return (
         <div className="flex flex-col h-full overflow-hidden bg-background">
@@ -434,6 +481,22 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
                         className="h-8 pl-8 text-sm bg-muted/50 border-0 rounded-lg focus-visible:ring-1" />
                 </div>
 
+                <div role="tablist" aria-label="Filter chats" className="flex gap-1 p-0.5 bg-muted/50 rounded-lg">
+                    {FILTER_OPTIONS.map(option => (
+                        <button key={option.value} type="button" role="tab"
+                            aria-selected={filter === option.value}
+                            onClick={() => handleFilterChange(option.value)}
+                            className={cn(
+                                "flex-1 h-7 rounded-md text-xs font-medium transition-colors cursor-pointer",
+                                filter === option.value
+                                    ? "bg-background text-foreground shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}>
+                            {option.label}
+                        </button>
+                    ))}
+                </div>
+
                 {isNewChatOpen && (
                     <div className="p-2.5 bg-muted/30 rounded-lg space-y-2 border border-border/40">
                         <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Phone Number</Label>
@@ -450,12 +513,16 @@ export function ChatList({ sessionId, onSelectChat, selectedJid }: ChatListProps
 
             {/* Chat list */}
             <div className="flex-1 min-h-0">
-                {filteredChats.length === 0 ? (
+                {loading && chats.length === 0 ? (
+                    <div className="py-1">
+                        {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
+                    </div>
+                ) : filteredChats.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
                         <div className="h-12 w-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
                             <MessageCircle className="h-6 w-6 text-muted-foreground/50" />
                         </div>
-                        <p className="text-sm text-muted-foreground">{searchQuery ? "No chats match your search" : "No chats yet"}</p>
+                        <p className="text-sm text-muted-foreground">{emptyLabel}</p>
                     </div>
                 ) : (
                     <Virtuoso style={{ height: "100%" }} data={filteredChats}
