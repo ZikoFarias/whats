@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { NextRequest } from "next/server";
 import { auth } from "./auth";
 import { logger } from "./logger";
+import { randomBytes } from "crypto";
 
 // Role hierarchy for permission checks
 const ROLE_HIERARCHY = {
@@ -249,10 +250,5 @@ export async function getAccessibleSessions(userId: string, userRole: string) {
  * Generate a new API key
  */
 export function generateApiKey(): string {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let result = "wag_"; // Prefix for easy identification
-    for (let i = 0; i < 32; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
+    return `wag_${randomBytes(32).toString("base64url")}`;
 }

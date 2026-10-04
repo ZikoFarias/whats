@@ -41,3 +41,10 @@ Thumbs.db
 .vscode
 *.swp
 *.swo
+
+# Local smoke-test leftovers
+.smoke-*
+.runner-*
+.codex-ca-*
+smoke-*
+r.text*

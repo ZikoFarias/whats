@@ -1,4 +1,4 @@
-FROM node:26-alpine AS builder
+FROM node:22-alpine AS builder
 RUN apk add --no-cache openssl ca-certificates
 WORKDIR /app
 
@@ -12,12 +12,11 @@ RUN npm ci --legacy-peer-deps && npm cache clean --force
 COPY . .
 RUN npx prisma generate && npm run build
 
-# Strip devDeps from node_modules after build
-# tsx needed at runtime, kept explicitly
-RUN npm prune --omit=dev && npm install --no-save tsx typescript
+# Strip devDeps from node_modules after build (tsx/typescript are runtime deps for the custom server)
+RUN npm prune --omit=dev && npm cache clean --force
 
 # Production image
-FROM node:26-alpine AS runner
+FROM node:22-alpine AS runner
 RUN apk add --no-cache openssl ca-certificates
 WORKDIR /app
 
@@ -35,4 +34,4 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma db push && (if [ -n \"$ADMIN_EMAIL\"] && [ -n \"$ADMIN_PASSWORD\"]; then node scripts/setup-admin.js \"$ADMIN_EMAIL\" \"$ADMIN_PASSWORD\"; fi) && node node_modules/tsx/dist/cli.mjs src/server/index.ts"]
+CMD ["sh", "-c", "set -eu; npx prisma db push; if [ -n \"${ADMIN_EMAIL:-}\" ] && [ -n \"${ADMIN_PASSWORD:-}\" ]; then node scripts/setup-admin.cjs \"$ADMIN_EMAIL\" \"$ADMIN_PASSWORD\"; fi; exec node node_modules/tsx/dist/cli.mjs src/server/index.ts"]

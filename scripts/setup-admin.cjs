@@ -42,6 +42,13 @@ async function main() {
         });
         console.log("Super Admin created successfully!");
     }
+
+    await prisma.systemConfig.upsert({
+        where: { id: "default" },
+        update: { enableRegistration: false },
+        create: { id: "default", appName: "WA-AKG", enableRegistration: false }
+    });
+    console.log("Public registration disabled by default.");
 }
 
 main()

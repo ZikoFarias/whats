@@ -1,6 +1,53 @@
+import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { AuthenticationCreds, AuthenticationState, BufferJSON, initAuthCreds, SignalDataTypeMap } from "@whiskeysockets/baileys";
 import { logger } from "@/lib/logger";
+
+const ENCRYPTED_AUTH_MARKER = "__waAkgAuthState";
+
+function getAuthStateEncryptionKey(): Buffer {
+    const encodedKey = process.env.WA_AKG_AUTH_STATE_ENCRYPTION_KEY;
+    if (!encodedKey) {
+        throw new Error("WA_AKG_AUTH_STATE_ENCRYPTION_KEY is required to persist WhatsApp credentials");
+    }
+
+    const key = Buffer.from(encodedKey, "base64url");
+    if (key.length !== 32) {
+        throw new Error("WA_AKG_AUTH_STATE_ENCRYPTION_KEY must decode to exactly 32 bytes");
+    }
+    return key;
+}
+
+function encryptAuthState(serialized: string) {
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", getAuthStateEncryptionKey(), iv);
+    const ciphertext = Buffer.concat([cipher.update(serialized, "utf8"), cipher.final()]);
+    return {
+        [ENCRYPTED_AUTH_MARKER]: 1,
+        iv: iv.toString("base64url"),
+        tag: cipher.getAuthTag().toString("base64url"),
+        data: ciphertext.toString("base64url"),
+    };
+}
+
+function decryptAuthState(value: unknown): unknown {
+    if (!value || typeof value !== "object" || (value as Record<string, unknown>)[ENCRYPTED_AUTH_MARKER] !== 1) {
+        // Keep existing plaintext records readable while they are upgraded on the next write.
+        return value;
+    }
+
+    const encrypted = value as { iv: string; tag: string; data: string };
+    const decipher = createDecipheriv(
+        "aes-256-gcm",
+        getAuthStateEncryptionKey(),
+        Buffer.from(encrypted.iv, "base64url")
+    );
+    decipher.setAuthTag(Buffer.from(encrypted.tag, "base64url"));
+    return Buffer.concat([
+        decipher.update(Buffer.from(encrypted.data, "base64url")),
+        decipher.final(),
+    ]).toString("utf8");
+}
 
 export const usePrismaAuthState = async (sessionId: string): Promise<{ state: AuthenticationState, saveCreds: () => Promise<void> }> => {
     
@@ -12,7 +59,11 @@ export const usePrismaAuthState = async (sessionId: string): Promise<{ state: Au
                 where: { sessionId_key: { sessionId, key } }
             });
             if (data && data.value) {
-                return JSON.parse(JSON.stringify(data.value), BufferJSON.reviver);
+                const value = decryptAuthState(data.value);
+                if (typeof value === "string") {
+                    return JSON.parse(value, BufferJSON.reviver);
+                }
+                return JSON.parse(JSON.stringify(value), BufferJSON.reviver);
             }
             return null;
         } catch (error) {
@@ -25,7 +76,7 @@ export const usePrismaAuthState = async (sessionId: string): Promise<{ state: Au
     const writeData = async (type: string, id: string, data: any) => {
         try {
             const key = `${type}-${id}`;
-            const value = JSON.parse(JSON.stringify(data, BufferJSON.replacer));
+            const value = encryptAuthState(JSON.stringify(data, BufferJSON.replacer));
             
             await prisma.authState.upsert({
                 where: { sessionId_key: { sessionId, key } },
