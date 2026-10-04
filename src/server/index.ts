@@ -1,4 +1,7 @@
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
+import { createRequire } from "node:module";
+const { loadEnvConfig } = nextEnv;
+const require = createRequire(import.meta.url);
 // Load environment variables before any other imports/logic
 loadEnvConfig(process.cwd());
 
@@ -9,7 +12,7 @@ import { Server } from "socket.io";
 import { setupSocket } from "./socket";
 import { waManager } from "../modules/whatsapp/manager";
 import { logger } from "../lib/logger";
-import pkg from "../../package.json";
+const pkg = require("../../package.json");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "localhost";
@@ -94,10 +97,11 @@ app.prepare().then(() => {
       }
     };
 
-    // Initial ping
-    sendHeartbeat();
-    // Interval ping
-    setInterval(sendHeartbeat, 30000);
+    // Telemetry is opt-in for shared SaaS deployments.
+    if (process.env.WA_AKG_HEARTBEAT_ENABLED === "true") {
+      sendHeartbeat();
+      setInterval(sendHeartbeat, 30000);
+    }
     // --------------------------------
   });
 });

@@ -17,7 +17,9 @@ export async function POST(req: Request) {
         // Check if registration is enabled
         const systemConfig = await prisma.systemConfig.findUnique({ where: { id: "default" } });
         // @ts-ignore
-        if (systemConfig && systemConfig.enableRegistration === false) {
+        const registrationEnabled = systemConfig?.enableRegistration
+            ?? process.env.ALLOW_PUBLIC_REGISTRATION === "true";
+        if (!registrationEnabled) {
             return NextResponse.json(
                 { error: "Registration is currently disabled by the administrator" },
                 { status: 403 }
