@@ -2,6 +2,7 @@ import { prisma } from "./prisma";
 import { NextRequest } from "next/server";
 import { auth } from "./auth";
 import { logger } from "./logger";
+import { API_KEY_PREFIX, resolveApiKey } from "./api-keys";
 
 // Role hierarchy for permission checks
 const ROLE_HIERARCHY = {
@@ -19,6 +20,22 @@ export async function validateApiKey(request: NextRequest) {
     const apiKey = request.headers.get("x-api-key");
 
     if (!apiKey) {
+        return null;
+    }
+
+    // Per-integration keys (scopes and session limits are enforced in the custom server)
+    if (apiKey.startsWith(API_KEY_PREFIX)) {
+        try {
+            const key = await resolveApiKey(apiKey);
+            return key ? key.user : null;
+        } catch (error) {
+            logger.error("Auth", "API key validation error:", error);
+            return null;
+        }
+    }
+
+    // Legacy single per-user key (User.apiKey), kept for existing integrations
+    if (process.env.LEGACY_API_KEYS === "false") {
         return null;
     }
 

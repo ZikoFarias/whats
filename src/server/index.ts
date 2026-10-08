@@ -9,6 +9,7 @@ import { Server } from "socket.io";
 import { setupSocket } from "./socket";
 import { waManager } from "../modules/whatsapp/manager";
 import { logger } from "../lib/logger";
+import { API_KEY_PREFIX, checkApiKeyRequest } from "../lib/api-keys";
 import pkg from "../../package.json";
 
 const dev = process.env.NODE_ENV !== "production";
@@ -28,6 +29,26 @@ app.prepare().then(() => {
     try {
       if (!req.url) return;
       const parsedUrl = parse(req.url, true);
+
+      // MCP endpoint for AI attendants (authenticates and checks scopes per tool itself)
+      if (parsedUrl.pathname === "/api/mcp") {
+        const { handleMcpRequest } = await import("../modules/mcp/server");
+        await handleMcpRequest(req, res);
+        return;
+      }
+
+      // Per-integration API keys: enforce scopes and session limits before any route runs
+      const apiKey = req.headers["x-api-key"];
+      if (typeof apiKey === "string" && apiKey.startsWith(API_KEY_PREFIX) && parsedUrl.pathname?.startsWith("/api/")) {
+        const check = await checkApiKeyRequest(req.method || "GET", parsedUrl.pathname, apiKey);
+        if (!check.ok) {
+          res.statusCode = check.status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ status: false, message: check.message, error: check.message }));
+          return;
+        }
+      }
+
       await handle(req, res, parsedUrl);
     } catch (err) {
       logger.error("Server", "Error handling", req.url, err);
@@ -56,6 +77,15 @@ app.prepare().then(() => {
   // Start Scheduler
   import("../modules/whatsapp/scheduler").then(m => m.startScheduler());
 
+  // Start persistent broadcast queue worker
+  import("../modules/whatsapp/broadcast-queue").then(m => m.startBroadcastWorker());
+
+  // Start scheduled group automations (open/close group, recurring posts)
+  import("../modules/groups/automations").then(m => m.startAutomationScheduler());
+
+  // Start webhook outbox worker (retries failed deliveries)
+  import("../lib/webhook-delivery").then(m => m.startWebhookWorker());
+
   // Cloudflare 520 Fix: increase keep-alive timeout so Node doesn't kill idle connections that Cloudflare expects to reuse
   // See: https://github.com/vercel/next.js/issues/48962
   server.keepAliveTimeout = 120 * 1000; // 120 seconds
@@ -63,41 +93,5 @@ app.prepare().then(() => {
 
   server.listen(port, () => {
     logger.banner(pkg.name.toUpperCase(), pkg.version, port);
-
-    // --- WA-AKG Monitor Heartbeat ---
-    // Sends a ping every 30 seconds to the monitoring server
-    // Hanya untuk dokumentasi ada berapa layanan WA-AKG yang aktif. 
-    // Hanya untuk memantau tidak bermaksud lain. Semakin banyak WA-AKG yang aktif = semakin semangat saya mengembangkan WA-AKG ini.
-    // Terima kasih telah menggunakan WA-AKG.
-    const MONITOR_URL = "https://api-wa-akg.aikeigroup.net/api/ping";
-    const APP_URL = process.env.BASE_URL || `http://${hostname}:${port}`; // Kamu bisa mengganti ini untuk keamanan WA-AKG kamu. Tapi jangan menghapus semua Heartbeat nya. Terima Kasih.
-    const APP_NAME = process.env.APP_NAME || "WA-AKG";
-
-    const sendHeartbeat = async () => {
-      try {
-        await fetch(MONITOR_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            appUrl: APP_URL,
-            appName: APP_NAME,
-            isBackend: true,
-            systemInfo: {
-              platform: process.platform,
-              nodeVersion: process.version,
-              memoryUsage: Math.round(process.memoryUsage().rss / 1024 / 1024) + "MB"
-            }
-          }),
-        });
-      } catch (error) {
-        // Silently fail to not disturb the main application
-      }
-    };
-
-    // Initial ping
-    sendHeartbeat();
-    // Interval ping
-    setInterval(sendHeartbeat, 30000);
-    // --------------------------------
   });
 });

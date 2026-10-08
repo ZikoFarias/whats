@@ -13,6 +13,7 @@ import {
     QrCode,
     ImageIcon,
     Webhook,
+    KeyRound,
     CalendarClock,
     Bot,
     Bell,
@@ -83,6 +84,7 @@ const navGroups: NavGroup[] = [
             { href: "/dashboard/profile", label: "Bot Profile", icon: UserCircle },
             { href: "/dashboard/scheduler", label: "Scheduler", icon: CalendarClock },
             { href: "/dashboard/webhooks", label: "Webhooks & API", icon: Webhook },
+            { href: "/dashboard/api-keys", label: "API Keys", icon: KeyRound },
         ],
     },
     {

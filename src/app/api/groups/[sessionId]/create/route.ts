@@ -1,49 +1,22 @@
-import { NextResponse, NextRequest } from "next/server";
-import { waManager } from "@/modules/whatsapp/manager";
-import { createGroupSchema } from "@/lib/validations";
-import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { withSession, readJson } from "@/lib/route-helpers";
+import { createGroup } from "@/modules/groups/service";
 
-// POST: Create a new group
-export async function POST(
-    request: NextRequest,
-    { params }: { params: Promise<{ sessionId: string }> }
-) {
-    try {
-        const user = await getAuthenticatedUser(request);
-        if (!user) {
-            return NextResponse.json({ status: false, message: "Unauthorized", error: "Unauthorized" }, { status: 401 });
-        }
+const schema = z.object({
+    subject: z.string().min(1).max(100),
+    participants: z.array(z.string().min(3)).min(1).max(200), // phones (any format) or JIDs
+    description: z.string().max(2048).optional(),
+    tags: z.array(z.string()).optional(),
+    announce: z.boolean().optional(), // start closed (only admins send)
+});
 
-        const { sessionId } = await params;
-        const body = await request.json();
-
-        // Inject sessionId into body for validation using existing schema
-        const payload = { ...body, sessionId };
-        
-        const parseResult = createGroupSchema.safeParse(payload);
-        if (!parseResult.success) {
-            return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
-        }
-
-        const { subject, participants } = parseResult.data;
-
-        // Check if user can access this session
-        const canAccess = await canAccessSession(user.id, user.role, sessionId);
-        if (!canAccess) {
-            return NextResponse.json({ status: false, message: "Forbidden - Cannot access this session", error: "Forbidden - Cannot access this session" }, { status: 403 });
-        }
-
-        const instance = waManager.getInstance(sessionId);
-        if (!instance?.socket) {
-            return NextResponse.json({ status: false, message: "Session not ready", error: "Session not ready" }, { status: 503 });
-        }
-
-        const group = await instance.socket.groupCreate(subject, participants);
-        
-        return NextResponse.json({ status: true, message: "Operation successful", data: { group } });
-
-    } catch (e) {
-        console.error("Create group error", e);
-        return NextResponse.json({ status: false, message: "Failed to create group", error: "Failed to create group" }, { status: 500 });
-    }
+/** POST /api/groups/{sessionId}/create — create a group; response keeps the { group } shape */
+export async function POST(request: NextRequest, { params }: { params: Promise<{ sessionId: string }> }) {
+    const { sessionId } = await params;
+    return withSession(request, sessionId, async () => {
+        const body = schema.parse(await readJson(request));
+        const group = await createGroup(sessionId, body.subject, body.participants, body);
+        return { group: { id: group.jid, subject: group.subject } };
+    });
 }

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
+import { listGroups } from "@/modules/groups/service";
 
 // GET: List groups for a session
 export async function GET(
@@ -29,6 +30,20 @@ export async function GET(
 
         if (!session) {
             return NextResponse.json({ status: false, message: "Session not found", error: "Session not found" }, { status: 404 });
+        }
+
+        // ?view=summary returns the groups module listing (filters, tags, roles) instead of raw rows
+        const q = new URL(request.url).searchParams;
+        if (q.get("view") === "summary") {
+            const data = await listGroups(sessionId, {
+                search: q.get("search") ?? undefined,
+                tag: q.get("tag") ?? undefined,
+                adminOnly: q.get("adminOnly") === "true",
+                includeLeft: q.get("includeLeft") === "true",
+                communities: (q.get("communities") as "only" | "exclude" | null) ?? undefined,
+                sort: (q.get("sort") as "name" | "size" | "activity" | null) ?? undefined,
+            });
+            return NextResponse.json({ status: true, message: "Groups retrieved successfully", data });
         }
 
         const groups = await prisma.group.findMany({

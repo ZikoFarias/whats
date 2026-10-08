@@ -172,3 +172,79 @@ export async function batchResolveToPhoneJid(
 
     return result;
 }
+
+// ---------------------------------------------------------------------------
+// Recipient resolution (phone number -> real WhatsApp JID)
+// ---------------------------------------------------------------------------
+
+const recipientCache = new Map<string, { jid: string; expiresAt: number }>();
+const RECIPIENT_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Digits of a phone number, with the default country code added to numbers
+ * typed in national format. Only raw input (no "@") is treated as national:
+ * full JIDs come from WhatsApp itself and are already international.
+ *
+ * With DEFAULT_COUNTRY_CODE=55 (default), 10-11 digits = DDD + number, so
+ * "61985850383" becomes "5561985850383" instead of being read as +61 (Australia).
+ */
+export function normalizePhoneDigits(input: string): string {
+    const raw = (input || "").trim();
+    const digits = raw.split("@")[0].split(":")[0].replace(/\D/g, "").replace(/^0+/, "");
+    const countryCode = (process.env.DEFAULT_COUNTRY_CODE ?? "55").replace(/\D/g, "");
+    if (!raw.includes("@") && countryCode === "55" && (digits.length === 10 || digits.length === 11)) {
+        return `55${digits}`;
+    }
+    return digits;
+}
+
+/**
+ * Brazilian mobile numbers may be registered on WhatsApp with or without the
+ * extra "9" digit. Returns both variants so we can ask WhatsApp which exists.
+ */
+function brazilianVariants(digits: string): string[] {
+    if (!digits.startsWith("55")) return [digits];
+    const ddd = digits.slice(2, 4);
+    const local = digits.slice(4);
+    if (local.length === 9 && local.startsWith("9")) {
+        return [digits, `55${ddd}${local.slice(1)}`];
+    }
+    if (local.length === 8 && /^[6-9]/.test(local)) {
+        return [digits, `55${ddd}9${local}`];
+    }
+    return [digits];
+}
+
+/**
+ * Resolve any recipient input ("5561999999999", "+55 (61) 99999-9999",
+ * "5561999999999@s.whatsapp.net", "...@c.us") to the JID WhatsApp really uses.
+ * Groups, LIDs, broadcast and newsletter JIDs are returned unchanged.
+ * Throws if the number is not on WhatsApp.
+ */
+export async function resolveRecipientJid(
+    socket: { onWhatsApp: (...jids: string[]) => Promise<any> },
+    input: string
+): Promise<string> {
+    const raw = (input || "").trim();
+    if (/@(g\.us|lid|broadcast|newsletter)$/.test(raw)) return raw;
+
+    const digits = normalizePhoneDigits(raw);
+    if (digits.length < 8) {
+        throw new Error(`Invalid recipient: "${input}"`);
+    }
+
+    const cached = recipientCache.get(digits);
+    if (cached && cached.expiresAt > Date.now()) return cached.jid;
+
+    for (const candidate of brazilianVariants(digits)) {
+        const result = await socket.onWhatsApp(candidate);
+        const hit = Array.isArray(result) ? result.find((r: any) => r?.exists && r?.jid) : null;
+        if (hit) {
+            const jid = normalizeJid(hit.jid);
+            recipientCache.set(digits, { jid, expiresAt: Date.now() + RECIPIENT_CACHE_TTL_MS });
+            return jid;
+        }
+    }
+
+    throw new Error(`Number ${digits} is not on WhatsApp`);
+}

@@ -47,6 +47,7 @@ model User {
   
   sessions  Session[]
   webhooks  Webhook[]
+  apiKeys   ApiKey[]
   notifications Notification[]
   sessionAccesses SessionAccess[]
 }
@@ -138,6 +139,16 @@ model Group {
   // Community Features
   isCommunity Boolean  @default(false)
   linkedParentJid String? // JID of the community parent group if it belongs to one
+
+  // Groups module
+  size             Int?      // participant count
+  myRole           String?   // member, admin, superadmin (this number's role in the group)
+  memberAddMode    Boolean?  // true = all members can add participants
+  joinApprovalMode Boolean?  // true = admins must approve join requests
+  ephemeralDuration Int?
+  tags             Json?     // ["clientes", "lancamento-out"] for filtering and targeting
+  notes            String?   @db.Text
+  lastActivityAt   DateTime?
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -217,6 +228,28 @@ model Webhook {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   session     Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   logs        WebhookLog[]
+  deliveries  WebhookDelivery[]
+}
+
+/// Outbox: one row per event per webhook, retried with backoff until delivered or out of attempts
+model WebhookDelivery {
+  id             String    @id @default(cuid())
+  webhookId      String
+  event          String
+  payload        Json
+  status         String    @default("pending") // pending, delivering, delivered, failed
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime  @default(now())
+  lastStatusCode Int?
+  lastError      String?   @db.Text
+  createdAt      DateTime  @default(now())
+  deliveredAt    DateTime?
+
+  webhook        Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextAttemptAt])
+  @@index([webhookId, createdAt])
+  @@index([webhookId, status])
 }
 
 // Webhook delivery logs — tracks every webhook request attempt
@@ -232,6 +265,8 @@ model WebhookLog {
   responseBody       String?  @db.Text
   responseTimeMs     Int?
   errorMessage       String?  @db.Text
+  deliveryId         String?  // WebhookDelivery this attempt belongs to
+  attempt            Int?     // attempt number for that delivery (1 = first try)
   createdAt          DateTime @default(now())
 
   webhook            Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
@@ -367,8 +402,19 @@ model BroadcastLog {
   total       Int
   sent        Int                 @default(0)
   failed      Int                 @default(0)
-  status      String              @default("running") // running, completed, cancelled
-  delay       Int                 @default(2000)
+  status      String              @default("running") // running, paused, completed, cancelled
+  delay       Int                 @default(12000)
+  mediaUrl    String?             @db.Text
+  mediaType   String?             // image, video, document
+  fileName    String?
+  pauseReason String?             @db.Text
+  waitingReason String?           @db.Text // why a running campaign is not sending right now
+  name        String?             // label, e.g. "Aula 1 - lembrete"
+  kind        String              @default("contacts") // contacts | groups
+  scheduledAt DateTime?           // do not start before this time
+  mentionAll  Boolean             @default(false) // groups: mention every member (@todos)
+  respectHours Boolean            @default(true)  // apply BROADCAST_HOURS window
+  sequenceId  String?             // campaigns created together as a sequence
   startedAt   DateTime            @default(now())
   completedAt DateTime?
 
@@ -376,17 +422,140 @@ model BroadcastLog {
 
   @@index([sessionId])
   @@index([sessionId, startedAt])
+  @@index([status])
 }
 
 model BroadcastRecipient {
   id              String       @id @default(cuid())
   broadcastLogId  String
   jid             String
-  status          String       @default("pending") // pending, sent, failed
+  status          String       @default("pending") // pending, sending, sent, failed, cancelled
   error           String?      @db.Text
+  variables       Json?        // template variables, e.g. {"nome": "Ana"}
+  hasChat         Boolean      @default(false) // contact has written to us before (safe to message)
+  attempts        Int          @default(0)
+  messageId       String?      // WhatsApp message key id, used to match later delivery errors
   sentAt          DateTime?
 
   broadcastLog    BroadcastLog @relation(fields: [broadcastLogId], references: [id], onDelete: Cascade)
 
   @@index([broadcastLogId])
+  @@index([broadcastLogId, status])
+  @@index([messageId])
+  @@index([status, sentAt])
 }
+
+/// Per-integration API keys (e.g. one for the CRM, one for n8n). Only the SHA-256 hash is stored.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  prefix     String    // first characters of the key, shown in the dashboard
+  keyHash    String    @unique
+  scopes     Json      // e.g. ["read", "send"] or ["*"]
+  sessionIds Json?     // WhatsApp sessionIds this key may use; null = all sessions the user can access
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+
+/// One row per (group, member) as seen by a session; kept after the member leaves (isActive=false)
+model GroupMember {
+  id            String    @id @default(cuid())
+  sessionId     String    // Session.id (cuid)
+  groupJid      String
+  memberJid     String    // as reported by WhatsApp (@s.whatsapp.net or @lid)
+  phone         String?   // phone digits when known
+  name          String?   // last push name seen
+  role          String    @default("member") // member, admin, superadmin
+  isActive      Boolean   @default(true)
+  joinedAt      DateTime?
+  leftAt        DateTime?
+  messageCount  Int       @default(0)
+  lastMessageAt DateTime?
+  warnings      Int       @default(0) // moderation strikes
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([sessionId, groupJid, memberJid])
+  @@index([sessionId, groupJid, isActive])
+  @@index([sessionId, memberJid])
+}
+
+/// Membership and moderation history, for analytics and audit
+model GroupEvent {
+  id        String   @id @default(cuid())
+  sessionId String   // Session.id (cuid)
+  groupJid  String
+  type      String   // join, leave, removed, promote, demote, join_request, moderation
+  memberJid String?
+  actorJid  String?
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, groupJid, createdAt])
+  @@index([sessionId, type, createdAt])
+}
+
+/// Smart invite link: one public URL that sends each visitor to the next group with room
+model GroupLink {
+  id             String   @id @default(cuid())
+  sessionId      String   // Session.id (cuid)
+  slug           String   @unique
+  name           String
+  groupJids      Json     // ordered list of group JIDs
+  maxMembers     Int      @default(1000) // consider a group full at this size (WhatsApp max is 1024)
+  strategy       String   @default("fill") // fill = first with room, balance = smallest group
+  autoCreate     Boolean  @default(false)  // create the next group when all are full
+  autoCreateName String?  // subject template, "{{name}} #{{n}}"
+  autoCreateTags Json?    // tags for auto-created groups
+  fallbackUrl    String?  @db.Text // where to send people if no group is available
+  active         Boolean  @default(true)
+  clicks         Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([sessionId])
+}
+
+model GroupLinkClick {
+  id          String   @id @default(cuid())
+  linkId      String
+  groupJid    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  referrer    String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([linkId, createdAt])
+}
+
+/// Group automation rule: trigger -> actions, scoped to all groups, tags or specific groups
+model GroupAutomation {
+  id            String    @id @default(cuid())
+  sessionId     String    // Session.id (cuid)
+  name          String
+  active        Boolean   @default(true)
+  priority      Int       @default(100) // lower runs first; a "stop" action ends the chain
+  scope         Json      // { all?: true, tags?: [], jids?: [] }
+  trigger       String    // member_join | member_leave | message | schedule
+  triggerConfig Json      // see modules/groups/automations.ts
+  actions       Json      // [{ type: "send_message", text: "..." }, ...]
+  ignoreAdmins  Boolean   @default(true)
+  cooldownSec   Int       @default(0)   // min seconds between runs per group+member
+  runs          Int       @default(0)
+  lastRunAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([sessionId, trigger, active])
+}
+

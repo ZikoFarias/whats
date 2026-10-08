@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { normalizeJid } from "@/lib/jid-utils";
+import { normalizeJid, resolveRecipientJid } from "@/lib/jid-utils";
 import { waManager } from "@/modules/whatsapp/manager";
 import { onMessageSent } from "@/lib/webhook";
 import Sticker from "wa-sticker-formatter";
@@ -28,8 +28,10 @@ export class ChatService {
             content: string | null;
             timestamp: Date;
             type: string;
+            fromMe: boolean | number;
+            keyId: string;
         }>>(`
-            SELECT m1.remoteJid, m1.content, m1.timestamp, m1.type
+            SELECT m1.remoteJid, m1.content, m1.timestamp, m1.type, m1.fromMe, m1.keyId
             FROM \`Message\` m1
             INNER JOIN (
                 SELECT remoteJid, MAX(timestamp) as max_ts
@@ -82,7 +84,9 @@ export class ChatService {
                     timestamp: msg.timestamp instanceof Date
                         ? msg.timestamp.toISOString()
                         : String(msg.timestamp),
-                    type: msg.type
+                    type: msg.type,
+                    fromMe: !!msg.fromMe,
+                    keyId: msg.keyId
                 }
             });
         }
@@ -318,6 +322,7 @@ export class ChatService {
             options.quoted = quotedOption;
         }
 
+        jid = await resolveRecipientJid(instance.socket, jid);
         const sendResult = await instance.socket.sendMessage(jid, msgPayload, options);
 
         // Fire webhook for sent message (non-blocking)
@@ -406,6 +411,7 @@ export class ChatService {
             content = { document: buffer, mimetype, fileName, ...messageOptions };
         }
 
+        jid = await resolveRecipientJid(instance.socket, jid);
         const sendResult = await instance.socket.sendMessage(jid, content);
 
         // Fire webhook for sent media message (non-blocking)

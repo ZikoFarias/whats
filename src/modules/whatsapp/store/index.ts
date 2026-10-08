@@ -7,6 +7,9 @@ import { resolveToPhoneJid, isLidJid, normalizeJid } from "@/lib/jid-utils";
 
 import { Server } from "socket.io";
 import { logger } from "@/lib/logger";
+import { handleParticipantsUpdate, handleGroupsUpsert, handleJoinRequest } from "@/modules/groups/sync";
+import { onGroupMessage } from "@/modules/groups/hooks";
+import { runMemberAutomations } from "@/modules/groups/automations";
 
 export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server | null) => {
     // Set start time for uptime command
@@ -66,6 +69,12 @@ export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server |
                 const savedMessage = await processAndSaveMessage(msg, dbSessionId, sessionId, type === 'notify', sock, config, io);
                 if (savedMessage) {
                     processedMessages.push(savedMessage);
+                }
+
+                // Group activity counters (+ group automations)
+                if (type === 'notify' && savedMessage && msg.key.remoteJid?.endsWith('@g.us')) {
+                    onGroupMessage(sock, sessionId, dbSessionId, msg)
+                        .catch(e => logger.error("Groups", "Group message hook failed", e));
                 }
 
                 // Execute Bot Commands (Only for Notify / New Messages)
@@ -175,26 +184,37 @@ export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server |
                 const keyId = update.key?.id;
                 if (!keyId) continue;
 
-                const statusMap: Record<number, string> = {
-                    0: 'PENDING',
-                    1: 'SENT',
-                    2: 'DELIVERED',
-                    3: 'READ',
-                    4: 'READ', // Played
-                };
+                // Updates without a status (edits, reactions, etc.) must not reset it
+                const rawStatus = update.update?.status;
+                if (rawStatus === undefined || rawStatus === null) continue;
 
-                const status = statusMap[update.update?.status || 0] || 'PENDING';
+                const status = mapWAStatus(rawStatus);
+                const errorCode = status === 'FAILED'
+                    ? String(update.update?.messageStubParameters?.[0] ?? 'unknown')
+                    : undefined;
+                const error = errorCode ? { code: errorCode, reason: describeAckError(errorCode) } : undefined;
 
                 await prisma.message.updateMany({
                     where: { sessionId: dbSessionId, keyId },
                     data: { status: status as any }
                 });
 
+                if (error) {
+                    logger.warn("Store", `Message ${keyId} to ${update.key?.remoteJid} rejected by WhatsApp (${error.code}): ${error.reason}`);
+                    await markBroadcastRecipientFailed(keyId, `${error.code}: ${error.reason}`);
+                    if (error.code === '463') {
+                        // Keep sending would deepen the restriction: stop this number's campaigns
+                        const { pauseSessionCampaigns } = await import("../broadcast-queue");
+                        await pauseSessionCampaigns(sessionId, `WhatsApp error 463: ${error.reason}`);
+                    }
+                }
+
                 // Dispatch webhook for message status update
                 dispatchWebhook(sessionId, "message.status", {
                     keyId,
                     remoteJid: update.key?.remoteJid,
-                    status
+                    status,
+                    ...(error ? { error } : {})
                 });
             } catch (e) {
                 logger.error("Store", "Error updating message status", e);
@@ -238,6 +258,19 @@ export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server |
         }
     });
 
+    // This number joined or created a group
+    sock.ev.on('groups.upsert', async (groups) => {
+        handleGroupsUpsert(sock, sessionId, groups)
+            .catch(e => logger.error("Groups", "Failed to handle groups.upsert", e));
+        for (const g of groups) dispatchWebhook(sessionId, "group.joined", { jid: g.id, subject: g.subject, size: g.size ?? g.participants?.length });
+    });
+
+    // Someone asked to join a group that requires approval
+    sock.ev.on('group.join-request', async (req) => {
+        handleJoinRequest(sessionId, req as any).catch(e => logger.error("Groups", "Failed to handle join request", e));
+        dispatchWebhook(sessionId, "group.join_request", req);
+    });
+
     // Handle Group Participants Update
     sock.ev.on('group-participants.update', async (update) => {
         if (!dbSessionId || !update.id) return;
@@ -252,16 +285,16 @@ export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server |
                 participants: update.participants
             });
             
-            // To properly resync the group participants in DB, it's safer to re-fetch the entire group metadata
-            // But we don't await strictly to not block the socket
-            sock.groupMetadata(update.id).then(async (g) => {
-                await prisma.group.updateMany({
-                    where: { sessionId: dbSessionId as string, jid: update.id as string },
-                    data: { participants: g.participants as any }
-                });
-            }).catch(e => {
-                 logger.debug("Store", "Failed to refresh group participants metadata", e);
-            });
+            // Members, roles and join/leave history (also refreshes group metadata)
+            handleParticipantsUpdate(sock, sessionId, update as any)
+                .then(() => {
+                    // Welcome / goodbye automations, after the member rows exist
+                    if (update.action === "add" || update.action === "remove") {
+                        const people = (update.participants as any[]).map(p => (typeof p === "string" ? { id: p } : p));
+                        return runMemberAutomations(sock, sessionId, update.id, update.action, people);
+                    }
+                })
+                .catch(e => logger.error("Groups", "Failed to handle participants update", e));
         } catch (e) {
             logger.error("Store", "Error in group-participants.update handling", e);
         }
@@ -572,3 +605,50 @@ async function processAndSaveMessage(
     }
 }
 // Placeholder - verified that I need to find the logic first
+
+
+/**
+ * Map Baileys/WhatsApp message status (proto.WebMessageInfo.Status) to our DB enum.
+ * ERROR=0, PENDING=1, SERVER_ACK=2, DELIVERY_ACK=3, READ=4, PLAYED=5
+ */
+function mapWAStatus(status: number): 'FAILED' | 'PENDING' | 'SENT' | 'DELIVERED' | 'READ' {
+    switch (status) {
+        case 0: return 'FAILED';
+        case 1: return 'PENDING';
+        case 2: return 'SENT';
+        case 3: return 'DELIVERED';
+        default: return 'READ'; // READ (4), PLAYED (5)
+    }
+}
+
+/** Human-readable reason for WhatsApp ack error codes */
+function describeAckError(code: string): string {
+    switch (code) {
+        case '463':
+            return 'Account restricted: WhatsApp is blocking this number from starting new chats (existing chats still work)';
+        case '479':
+            return 'Rejected by server: stale device session or malformed addressing';
+        default:
+            return 'Message rejected by WhatsApp';
+    }
+}
+
+/** If the failed message belongs to a broadcast, flip that recipient from sent to failed */
+async function markBroadcastRecipientFailed(messageId: string, error: string) {
+    try {
+        const recipient = await prisma.broadcastRecipient.findFirst({
+            where: { messageId },
+            select: { id: true, status: true, broadcastLogId: true }
+        });
+        if (!recipient || recipient.status === 'failed') return;
+
+        await prisma.broadcastRecipient.update({
+            where: { id: recipient.id },
+            data: { status: 'failed', error }
+        });
+        const { syncCounters } = await import("../broadcast-queue");
+        await syncCounters(recipient.broadcastLogId);
+    } catch (e) {
+        logger.error("Store", "Error marking broadcast recipient as failed", e);
+    }
+}

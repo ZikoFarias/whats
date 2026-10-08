@@ -6,6 +6,7 @@ import path from "path";
 import pino from "pino";
 import { resolveToPhoneJidBySessionId as resolveToPhoneJid, isLidJid } from "./jid-utils";
 import { logger } from "./logger";
+import { enqueueWebhookDelivery } from "./webhook-delivery";
 import { waManager } from "@/modules/whatsapp/manager";
 
 // Event types that can trigger webhooks
@@ -18,6 +19,9 @@ export type WebhookEventType =
     | "contact.update"
     | "status.update"
     | "group.participant"
+    | "group.joined"
+    | "group.join_request"
+    | "group.automation"
     | "message.deleted"
     | "message.edited"
     | "test";
@@ -93,9 +97,9 @@ export async function dispatchWebhook(
                 continue;
             }
 
-            // Send webhook in background
-            sendWebhookRequest(webhook.url, payload, webhook.secret, webhook.id).catch(err => {
-                logger.error("Webhook", `Webhook ${webhook.id} failed:`, err);
+            // Persist in the outbox and deliver (retried with backoff on failure)
+            enqueueWebhookDelivery(webhook, payload).catch(err => {
+                logger.error("Webhook", `Failed to queue webhook ${webhook.id}:`, err);
             });
         }
     } catch (error) {
@@ -127,79 +131,6 @@ function jsonReplacer(key: string, value: any) {
         return value.toString();
     }
     return value;
-}
-
-/**
- * Send HTTP POST request to webhook endpoint
- * Records delivery log to database
- */
-async function sendWebhookRequest(url: string, payload: WebhookPayload, secret?: string | null, webhookId?: string) {
-    const startedAt = Date.now();
-    const body = JSON.stringify(payload, jsonReplacer);
-
-    const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "User-Agent": "WA-AKG-Webhook/1.0"
-    };
-
-    // Add HMAC signature if secret is provided
-    if (secret) {
-        const signature = crypto
-            .createHmac("sha256", secret)
-            .update(body)
-            .digest("hex");
-        headers["X-Webhook-Signature"] = `sha256=${signature}`;
-    }
-
-    let response: Response;
-    let responseBody: string | undefined;
-    let errorMessage: string | undefined;
-
-    try {
-        response = await fetch(url, {
-            method: "POST",
-            headers,
-            body,
-            signal: AbortSignal.timeout(10000) // 10 second timeout
-        });
-
-        responseBody = await response.text().catch(() => undefined);
-        if (responseBody && responseBody.length > 1024) {
-            responseBody = responseBody.substring(0, 1024);
-        }
-
-        if (!response.ok) {
-            errorMessage = `Webhook returned ${response.status}: ${response.statusText}`;
-        }
-    } catch (err: any) {
-        errorMessage = err.message || "Webhook request failed";
-        response = null as unknown as Response;
-    }
-
-    // Calculate response time
-    const responseTimeMs = Date.now() - startedAt;
-
-    // Record delivery log
-    if (webhookId) {
-        recordWebhookLog({
-            webhookId,
-            event: payload.event,
-            status: errorMessage ? "FAILED" : "SUCCESS",
-            requestUrl: url,
-            requestHeaders: headers,
-            requestBody: payload,
-            responseStatusCode: response?.status ?? null,
-            responseBody: responseBody ?? null,
-            responseTimeMs,
-            errorMessage: errorMessage ?? null
-        }).catch(err => logger.error("Webhook", "Failed to save webhook log:", err));
-    }
-
-    if (errorMessage) {
-        throw new Error(errorMessage);
-    }
-
-    return response;
 }
 
 /**

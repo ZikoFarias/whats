@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { waManager } from "./manager";
 import { logger } from "@/lib/logger";
+import { resolveRecipientJid } from "@/lib/jid-utils";
 
 const checkScheduledMessages = async () => {
     try {
@@ -43,7 +44,8 @@ const checkScheduledMessages = async () => {
                         content = { text: msg.content };
                     }
 
-                    await instance.socket.sendMessage(msg.jid, content);
+                    const targetJid = await resolveRecipientJid(instance.socket, msg.jid);
+                    await instance.socket.sendMessage(targetJid, content);
 
                     await prisma.scheduledMessage.update({
                         where: { id: msg.id },
