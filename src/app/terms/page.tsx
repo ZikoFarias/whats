@@ -3,7 +3,17 @@ import { ArrowLeft, ShieldCheck, Scale } from "lucide-react";
 
 export const metadata = {
     title: "Terms of Service | WA-AKG",
-    description: "Terms of Service and Usage Guidelines for WA-AKG.",
+    description: "Terms of Service for WA-AKG self-hosted WhatsApp Gateway. Usage guidelines, security requirements, and acceptable use policy.",
+    openGraph: {
+        title: "Terms of Service | WA-AKG",
+        description: "Terms of Service for WA-AKG self-hosted WhatsApp Gateway.",
+        type: "website",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Terms of Service | WA-AKG",
+        description: "Terms of Service for WA-AKG self-hosted WhatsApp Gateway.",
+    },
 };
 
 export default function TermsPage() {

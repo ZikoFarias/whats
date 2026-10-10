@@ -11,6 +11,12 @@ export const metadata = {
     title: "WA-AKG | Premium WhatsApp Gateway",
     description: "Self-hosted WhatsApp Gateway with Multi-device support, Auto-replies, and API integration.",
     type: "website",
+    url: process.env.NEXT_PUBLIC_APP_URL || "https://wa-akg.app",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WA-AKG | Premium WhatsApp Gateway",
+    description: "Self-hosted WhatsApp Gateway with Multi-device support, Auto-replies, and API integration.",
   },
 };
 

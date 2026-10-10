@@ -5,30 +5,30 @@ This guide will help you set up the database for **WA-AKG**. The project uses **
 ## 1. Prerequisites
 
 Ensure you have a database server running.
--   **Docker Stack (Recommended)**: You can use the included Docker Compose configuration to automatically spin up a MySQL database alongside the Next.js gateway application.
+-   **PM2 Stack (Recommended)**: Run MySQL/PostgreSQL directly on the host, configure `.env`, and manage using PM2.
+-   **Docker Stack (Alternative)**: You can use the included Docker Compose configuration to spin up a MySQL database alongside the Next.js gateway application.
 -   **Local Development (Bare-metal)**: You can run MySQL or PostgreSQL locally on your machine.
 -   **Production**: Use a managed database service (e.g., Supabase, Neon, AWS RDS).
 
-## 2. Docker Compose Stack Setup (Zero Configuration)
+## 2. Docker Compose Setup (Alternative)
 
-The project includes a `docker-compose.yml` in the `web/` directory that defines a MySQL 8.0 container (`wa-akg-db`) and the Next.js gateway container (`wa-akg-app`).
+WA-AKG menyertakan `docker-compose.yml` di root project yang mendefinisikan container MySQL 8.0 (`wa-akg-db`) dan aplikasi (`wa-akg-app`).
 
-1. **Start Stack**:
-   From the `web/` directory, run:
+1. **Siapkan Environment**:
    ```bash
-   cd web
+   cp .env.example .env
+   ```
+   Edit `.env` — isi `AUTH_SECRET`, `MYSQL_ROOT_PASSWORD`, `ADMIN_PASSWORD`, dan `NEXT_PUBLIC_SWAGGER_PASSWORD` dengan nilai yang kuat.
+
+2. **Jalankan Stack**:
+   ```bash
    docker compose up -d
    ```
-2. **Automated Setup**:
-   On startup, the container automatically:
-   - Sets up the MySQL database.
-   - Pushes the database schema and creates all tables (`npx prisma db push`).
-   - Provisions a default SuperAdmin account with the credentials:
-     - **Email**: `admin@example.com`
-     - **Password**: `admin123`
 
-3. **Custom Configuration (Optional)**:
-   If you wish to change defaults (like database connection details, admin login, timezone, or secrets), you can edit the environment values directly in `web/docker-compose.yml`, or copy `web/.env.example` to `web/.env` and edit it before running docker compose.
+3. **Apa yang terjadi saat startup**:
+   - MySQL database dibuat.
+   - Semua tabel dibuat otomatis (`npx prisma db push`).
+   - Akun SuperAdmin diprovisi menggunakan kredensial dari `.env` Anda.
 
 ---
 

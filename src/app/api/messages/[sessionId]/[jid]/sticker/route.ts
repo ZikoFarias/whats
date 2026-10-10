@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { waManager } from "@/modules/whatsapp/manager";
 import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
+import { fireSentWebhook } from "@/lib/webhook";
 import Sticker from "wa-sticker-formatter";
 
 // POST: Send sticker from image
@@ -55,7 +56,10 @@ export async function POST(
 
         const stickerBuffer = await sticker.toBuffer();
 
-        await instance.socket.sendMessage(decodedJid, { sticker: stickerBuffer });
+        const sendResult = await instance.socket.sendMessage(decodedJid, { sticker: stickerBuffer });
+
+        // Fire webhook for sent message (non-blocking)
+        fireSentWebhook(sessionId, decodedJid, { type: 'sticker' }, sendResult).catch(() => {});
 
         return NextResponse.json({ status: true, message: "Operation successful" });
 

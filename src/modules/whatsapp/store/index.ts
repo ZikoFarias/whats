@@ -63,7 +63,7 @@ export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server |
                     await sock.readMessages([msg.key]);
                 }
 
-                const savedMessage = await processAndSaveMessage(msg, dbSessionId, sessionId, type === 'notify', sock, config);
+                const savedMessage = await processAndSaveMessage(msg, dbSessionId, sessionId, type === 'notify', sock, config, io);
                 if (savedMessage) {
                     processedMessages.push(savedMessage);
                 }
@@ -106,7 +106,7 @@ export const bindSessionStore = (sock: WASocket, sessionId: string, io: Server |
             logger.info("Store", `Syncing ${messages.length} historical messages...`);
             for (const msg of messages) {
                 try {
-                    await processAndSaveMessage(msg, dbSessionId, sessionId, false, sock);
+                    await processAndSaveMessage(msg, dbSessionId, sessionId, false, sock, undefined, io);
                 } catch (error) {
                     logger.error("Store", "Error saving historical message", error);
                 }
@@ -274,7 +274,8 @@ async function processAndSaveMessage(
     sessionId: string,
     triggerWebhook: boolean,
     sock?: WASocket,
-    config?: any
+    config?: any,
+    io?: Server | null
 ) {
     const keyId = msg.key.id;
     const remoteJid = msg.key.remoteJid;
@@ -327,10 +328,44 @@ async function processAndSaveMessage(
 
         // Message Revoke/Deleted (Type 0)
         if (pMessage?.type === 0 && targetKeyId) {
-            await prisma.message.updateMany({
-                where: { sessionId: dbSessionId, keyId: targetKeyId },
-                data: { content: "[This message was deleted]", status: "FAILED" }
-            });
+            // Check anti-delete config
+            let antiDeleteEnabled = false;
+            try {
+                const s = await prisma.session.findUnique({
+                    where: { sessionId },
+                    select: { config: true }
+                });
+                antiDeleteEnabled = !!(s?.config as any)?.antiDelete;
+            } catch {}
+
+            if (antiDeleteEnabled) {
+                // Anti-delete: read original, keep content, append marker
+                const orig = await prisma.message.findFirst({
+                    where: { sessionId: dbSessionId, keyId: targetKeyId },
+                    select: { content: true }
+                });
+                const preserved = (orig?.content || "") + "\n\n🛡️ [Deleted by sender — preserved]";
+                await prisma.message.updateMany({
+                    where: { sessionId: dbSessionId, keyId: targetKeyId },
+                    data: { content: preserved }
+                });
+                // Re-fetch & re-emit so frontend updates
+                const updated = await prisma.message.findFirst({
+                    where: { sessionId: dbSessionId, keyId: targetKeyId }
+                });
+                if (updated) {
+                    io?.to(sessionId).emit("message.update", [{
+                        ...updated,
+                        timestamp: updated.timestamp instanceof Date ? updated.timestamp.toISOString() : updated.timestamp
+                    }]);
+                }
+            } else {
+                // Normal: mark as deleted
+                await prisma.message.updateMany({
+                    where: { sessionId: dbSessionId, keyId: targetKeyId },
+                    data: { content: "[This message was deleted]", status: "FAILED" }
+                });
+            }
 
             // Trigger Webhook
             if (triggerWebhook) {
@@ -386,8 +421,64 @@ async function processAndSaveMessage(
     let text = "";
     let messageType = "TEXT";
 
+    // Check for interactive message (native flow / viewOnce wrapper)
+    const rawMsg = msg.message as any;
+    const interactiveMsg = messageContent?.interactiveMessage || 
+        rawMsg?.viewOnceMessage?.message?.interactiveMessage || 
+        rawMsg?.viewOnceMessageV2?.message?.interactiveMessage;
+
     // Extract content based on message type
-    if (messageContent?.conversation) {
+    if (interactiveMsg) {
+        messageType = "TEXT";
+        const title = interactiveMsg.header?.title ? `*${interactiveMsg.header.title}*\n` : "";
+        const body = interactiveMsg.body?.text || "";
+        const footer = interactiveMsg.footer?.text ? `\n_${interactiveMsg.footer.text}_` : "";
+
+        let buttonList = "";
+        const rawBtns = interactiveMsg.nativeFlowMessage?.buttons || [];
+        if (Array.isArray(rawBtns) && rawBtns.length > 0) {
+            const btnTitles = rawBtns.map((b: any) => {
+                try {
+                    const parsed = typeof b.buttonParamsJson === "string" ? JSON.parse(b.buttonParamsJson) : b.buttonParamsJson;
+                    return `[🔘 ${parsed?.display_text || parsed?.title || b.name}]`;
+                } catch {
+                    return `[🔘 ${b.name}]`;
+                }
+            });
+            buttonList = `\n\n${btnTitles.join("  ")}`;
+        }
+
+        text = `${title}${body}${footer}${buttonList}`.trim() || "[Interactive Message]";
+    } else if (messageContent?.interactiveResponseMessage) {
+        messageType = "TEXT";
+        const rm = messageContent.interactiveResponseMessage;
+        const nativeParams = rm.nativeFlowResponseMessage?.paramsJson;
+        let selectedId = "";
+        try {
+            if (nativeParams) {
+                const parsed = JSON.parse(nativeParams);
+                selectedId = parsed.id || parsed.item_id || "";
+            }
+        } catch {}
+        const bodyText = rm.body?.text || "";
+        const choice = bodyText || selectedId;
+        text = choice ? `🔘 [Interactive Response] ${choice}` : "🔘 [Interactive Response]";
+    } else if (messageContent?.buttonsResponseMessage) {
+        messageType = "TEXT";
+        const bm = messageContent.buttonsResponseMessage;
+        const choice = bm.selectedDisplayText || bm.selectedButtonId || "";
+        text = choice ? `🔘 [Button Response] ${choice}` : "🔘 [Button Response]";
+    } else if (messageContent?.listResponseMessage) {
+        messageType = "TEXT";
+        const lm = messageContent.listResponseMessage;
+        const choice = lm.title || lm.singleSelectReply?.selectedRowId || "";
+        text = choice ? `📋 [List Response] ${choice}` : "📋 [List Response]";
+    } else if (messageContent?.templateButtonReplyMessage) {
+        messageType = "TEXT";
+        const tm = messageContent.templateButtonReplyMessage;
+        const choice = tm.selectedDisplayText || tm.selectedId || "";
+        text = choice ? `🔘 [Button Reply] ${choice}` : "🔘 [Button Reply]";
+    } else if (messageContent?.conversation) {
         text = messageContent.conversation;
     } else if (messageContent?.extendedTextMessage?.text) {
         text = messageContent.extendedTextMessage.text;
@@ -441,6 +532,22 @@ async function processAndSaveMessage(
         logger.error("Store", "Error downloading media in store", e);
     }
 
+    // Extract contextInfo (quoted message ID)
+    let quoteId: string | null = null;
+    if (msg.message) {
+        const msgObj = msg.message as any;
+        for (const key of Object.keys(msgObj)) {
+            const inner = msgObj[key];
+            if (inner && typeof inner === 'object' && inner !== null && 'contextInfo' in inner) {
+                const contextInfo = (inner as any).contextInfo;
+                if (contextInfo?.stanzaId) {
+                    quoteId = contextInfo.stanzaId;
+                    break;
+                }
+            }
+        }
+    }
+
     try {
         const newMessage = await prisma.message.create({
             data: {
@@ -454,7 +561,8 @@ async function processAndSaveMessage(
                 content: text,
                 mediaUrl: fileUrl, // Save Media URL
                 status: fromMe ? "SENT" : "PENDING",
-                timestamp
+                timestamp,
+                quoteId
             }
         });
         

@@ -33,10 +33,9 @@ export async function GET(
 
         const webhooks = await prisma.webhook.findMany({
             where: {
-                userId: user.id,
                 OR: [
-                    { sessionId: session.id }, // Specific to this session
-                    { sessionId: null }        // Global webhooks
+                    { sessionId: session.id }, // Specific to this session (anyone who created it)
+                    { sessionId: null, userId: user.id } // User's own global webhooks
                 ]
             },
             include: {
@@ -74,6 +73,12 @@ export async function POST(
 
         if (!name || !url || !events || events.length === 0) {
             return NextResponse.json({ status: false, message: "Name, URL, and at least one event are required", error: "Name, URL, and at least one event are required" }, { status: 400 });
+        }
+
+        const { validateSafeUrl } = await import("@/lib/security");
+        const urlValidation = await validateSafeUrl(url, { allowHttp: false });
+        if (!urlValidation.valid) {
+            return NextResponse.json({ status: false, message: `Invalid webhook URL: ${urlValidation.error}`, error: urlValidation.error }, { status: 400 });
         }
 
         const session = await prisma.session.findUnique({

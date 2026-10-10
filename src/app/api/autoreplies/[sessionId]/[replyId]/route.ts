@@ -18,11 +18,36 @@ export async function PUT(
             return NextResponse.json({ status: false, message: "Forbidden - Cannot access this session", error: "Forbidden - Cannot access this session" }, { status: 403 });
         }
 
-        const body = await request.json();
-        const { keyword, response, matchType, triggerType, isMedia, mediaUrl } = body;
+        const rule = await prisma.autoReply.findUnique({
+            where: { id: replyId },
+            include: { session: true }
+        });
 
-        if (!keyword || !response) {
-            return NextResponse.json({ status: false, message: "Keyword and response are required", error: "Keyword and response are required" }, { status: 400 });
+        if (!rule) {
+            return NextResponse.json({ status: false, message: "Rule not found", error: "Rule not found" }, { status: 404 });
+        }
+
+        // Verify the rule belongs to this session (IDOR prevention)
+        if (rule.session.sessionId !== sessionId) {
+            return NextResponse.json({ status: false, message: "Rule not found in this session", error: "Rule not found in this session" }, { status: 404 });
+        }
+
+        const body = await request.json();
+        const { keyword, response, matchType, triggerType, isMedia, mediaUrl, mediaType } = body;
+
+        if (!keyword || (!response && !mediaUrl)) {
+            return NextResponse.json({ status: false, message: "Keyword and either response or media are required", error: "Keyword and response are required" }, { status: 400 });
+        }
+
+        if (isMedia && mediaUrl) {
+            const { validateSafeUrl } = await import("@/lib/security");
+            const urlValidation = await validateSafeUrl(mediaUrl);
+            if (!urlValidation.valid) {
+                return NextResponse.json(
+                    { status: false, message: `Invalid media URL: ${urlValidation.error}`, error: urlValidation.error },
+                    { status: 400 }
+                );
+            }
         }
 
         const updated = await prisma.autoReply.update({
@@ -33,7 +58,8 @@ export async function PUT(
                 matchType: matchType || "EXACT",
                 triggerType: triggerType || "ALL",
                 isMedia: isMedia || false,
-                mediaUrl: mediaUrl || null
+                mediaUrl: mediaUrl || null,
+                mediaType: mediaType || null
             }
         });
 

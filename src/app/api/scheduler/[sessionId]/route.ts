@@ -30,10 +30,23 @@ export async function GET(
             return NextResponse.json({ status: false, message: "Session not found", error: "Session not found" }, { status: 404 });
         }
 
+        const url = new URL(request.url);
+        const tab = url.searchParams.get("tab") || "pending";
+        
+        const whereClause: any = { sessionId: session.id };
+        let orderByClause: any = { sendAt: 'asc' };
+        
+        if (tab === "history") {
+            whereClause.status = { in: ["SENT", "FAILED"] };
+            orderByClause = { sendAt: 'desc' };
+        } else {
+            whereClause.status = "PENDING";
+        }
+
         const messages = await prisma.scheduledMessage.findMany({
-            where: { sessionId: session.id },
+            where: whereClause,
             include: { session: true },
-            orderBy: { sendAt: 'asc' }
+            orderBy: orderByClause
         });
 
         return NextResponse.json({ status: true, message: "Scheduled messages retrieved successfully", data: messages });
@@ -57,10 +70,10 @@ export async function POST(
         }
 
         const body = await request.json();
-        const { jid, content, sendAt, mediaUrl, mediaType } = body;
+        const { jid, content, sendAt, mediaUrl, mediaType, cronExpression, recurrenceRule } = body;
 
-        if (!jid || !content || !sendAt) {
-            return NextResponse.json({ status: false, message: "Missing required fields", error: "Missing required fields" }, { status: 400 });
+        if (!jid || (!content && !mediaUrl) || !sendAt) {
+            return NextResponse.json({ status: false, message: "Missing required fields (JID, Content/Media, SendAt)", error: "Missing required fields" }, { status: 400 });
         }
 
         const canAccess = await canAccessSession(user.id, user.role, sessionId);
@@ -93,6 +106,8 @@ export async function POST(
                 content,
                 mediaUrl,
                 mediaType,
+                cronExpression,
+                recurrenceRule,
                 sendAt: utcDate,
                 status: "PENDING"
             }
@@ -107,42 +122,3 @@ export async function POST(
 
 }
 
-/**
- * @deprecated This endpoint is deprecated. Use DELETE /api/scheduler/{sessionId}/{scheduleId} instead.
- * This endpoint will be removed in a future version.
- */
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ sessionId: string }> }
-) {
-    console.warn('[DEPRECATED] DELETE /api/scheduler/{id} is deprecated. Use DELETE /api/scheduler/{sessionId}/{scheduleId} instead.');
-    // In legacy route this param was 'id', now it acts as the id (scheduleId)
-    const { sessionId: id } = await params;
-
-    try {
-        const user = await getAuthenticatedUser(request);
-        if (!user) {
-            return NextResponse.json({ status: false, message: "Unauthorized", error: "Unauthorized" }, { status: 401 });
-        }
-
-        const msg = await prisma.scheduledMessage.findUnique({
-            where: { id },
-            include: { session: true }
-        });
-
-        if (!msg) {
-            return NextResponse.json({ status: false, message: "Message not found", error: "Message not found" }, { status: 404 });
-        }
-
-        const canAccess = await canAccessSession(user.id, user.role, msg.session.sessionId);
-        if (!canAccess) {
-            return NextResponse.json({ status: false, message: "Forbidden - Cannot access this session", error: "Forbidden - Cannot access this session" }, { status: 403 });
-        }
-
-        await prisma.scheduledMessage.delete({ where: { id } });
-        return NextResponse.json({ status: true, message: "Scheduled message deleted successfully", data: { success: true } });
-
-    } catch (error) {
-        return NextResponse.json({ status: false, message: "Internal Server Error", error: "Internal Server Error" }, { status: 500 });
-    }
-}

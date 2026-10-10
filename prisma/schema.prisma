@@ -12,8 +12,8 @@ datasource db {
 
 enum Role {
   SUPERADMIN
-  OWNER
   STAFF
+  USER
 }
 
 enum MessageType {
@@ -40,7 +40,7 @@ model User {
   name      String?
   email     String   @unique
   password  String
-  role      Role     @default(OWNER)
+  role      Role     @default(USER)
   apiKey    String?  @unique // API Key for authentication
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -116,6 +116,7 @@ model Message {
 
   @@unique([sessionId, keyId])
   @@index([sessionId, remoteJid])
+  @@index([sessionId, remoteJid, timestamp])
 }
 
 model Group {
@@ -151,9 +152,10 @@ model AutoReply {
   sessionId   String
   keyword     String
   matchType   String   // EXACT, CONTAINS, REGEX
-  response    String   @db.Text
+  response    String?  @db.Text
   isMedia     Boolean  @default(false)
   mediaUrl    String?
+  mediaType   String?
   triggerType String   @default("ALL") // ALL, GROUP, PRIVATE
   createdAt   DateTime @default(now())
 
@@ -177,10 +179,12 @@ model ScheduledMessage {
   id          String   @id @default(cuid())
   sessionId   String
   jid         String
-  content     String   @db.Text
+  content     String?  @db.Text
   mediaUrl    String?
   mediaType   String?  // image, video, document, etc.
   sendAt      DateTime
+  cronExpression String? // e.g., '*/5 * * * *'
+  recurrenceRule String? @db.Text // UI JSON state
   status      String   @default("PENDING") // PENDING, SENT, FAILED
   createdAt   DateTime @default(now())
 
@@ -212,6 +216,28 @@ model Webhook {
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   session     Session? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  logs        WebhookLog[]
+}
+
+// Webhook delivery logs — tracks every webhook request attempt
+model WebhookLog {
+  id                 String   @id @default(cuid())
+  webhookId          String
+  event              String   // The event that triggered this webhook
+  status             String   // SUCCESS, FAILED
+  requestUrl         String   @db.Text
+  requestHeaders     Json?
+  requestBody        Json?
+  responseStatusCode Int?
+  responseBody       String?  @db.Text
+  responseTimeMs     Int?
+  errorMessage       String?  @db.Text
+  createdAt          DateTime @default(now())
+
+  webhook            Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([webhookId, createdAt])
 }
 
 enum AccessMode {
@@ -269,7 +295,7 @@ model SystemConfig {
   logoUrl            String?
   faviconUrl         String?
   timezone           String   @default("Asia/Jakarta")
-  enableRegistration Boolean  @default(true)
+  enableRegistration Boolean  @default(false)
   
   updatedAt          DateTime @updatedAt
 }
@@ -331,4 +357,36 @@ model SessionAccess {
   @@unique([sessionId, userId])
   @@index([userId])
   @@index([sessionId])
+}
+
+// Broadcast/Blast history & logs
+model BroadcastLog {
+  id          String              @id @default(cuid())
+  sessionId   String              // WA session ID string
+  message     String              @db.Text
+  total       Int
+  sent        Int                 @default(0)
+  failed      Int                 @default(0)
+  status      String              @default("running") // running, completed, cancelled
+  delay       Int                 @default(2000)
+  startedAt   DateTime            @default(now())
+  completedAt DateTime?
+
+  recipients  BroadcastRecipient[]
+
+  @@index([sessionId])
+  @@index([sessionId, startedAt])
+}
+
+model BroadcastRecipient {
+  id              String       @id @default(cuid())
+  broadcastLogId  String
+  jid             String
+  status          String       @default("pending") // pending, sent, failed
+  error           String?      @db.Text
+  sentAt          DateTime?
+
+  broadcastLog    BroadcastLog @relation(fields: [broadcastLogId], references: [id], onDelete: Cascade)
+
+  @@index([broadcastLogId])
 }

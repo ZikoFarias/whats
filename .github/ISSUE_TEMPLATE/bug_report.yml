@@ -1,0 +1,87 @@
+name: 🐛 Bug Report
+description: Report a bug or error in WA-AKG
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for reporting a bug.** Fill in as much detail as possible so we can fix it fast.
+
+  - type: input
+    id: version
+    attributes:
+      label: WA-AKG Version
+      description: Which version are you using?
+      placeholder: "1.6.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: How is it deployed?
+      options:
+        - Docker Compose
+        - Bare Metal (Node.js directly)
+        - VPS (PM2 / systemd)
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Explain what happened
+      placeholder: "Bot does not respond to /ping command..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step so it can be reproduced
+      placeholder: |
+        1. Run `npm run dev`
+        2. Scan QR code
+        3. Send `/ping` command
+        4. Bot does not respond
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened?
+      placeholder: "Bot should reply 'Pong! 🏓'"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Error
+      description: Paste error logs from terminal / Docker
+      render: shell
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Upload a screenshot if it helps (drag & drop)
+
+  - type: input
+    id: node_version
+    attributes:
+      label: Node.js Version
+      description: Output of `node -v`
+      placeholder: "v22.1.0"
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: OS & version
+      placeholder: "Ubuntu 24.04 / Windows 11"

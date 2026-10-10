@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/api-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const user = await getAuthenticatedUser(request);
+        if (!user) {
+            return NextResponse.json({ status: false, message: "Unauthorized", error: "Unauthorized" }, { status: 401 });
+        }
+
         // @ts-ignore
         const config = await prisma.systemConfig.findUnique({
             where: { id: "default" }

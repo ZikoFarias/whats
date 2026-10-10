@@ -65,6 +65,8 @@ export default function ApiDocsPage() {
 
         // Messaging
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/send", description: "Send message", params: "Path: sessionId, jid, Body: { message }" },
+        { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/interactive", description: "Send rich interactive message (Native Flow buttons, CTA, URL, Call, Copy, List)", params: "Path: sessionId, jid, Body: { title, body, footer, buttons: [] }" },
+        { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/album", description: "Send album message (multiple media files)", params: "Path: sessionId, jid, Body: { items: [{ image|video, caption }] }" },
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/list", description: "Send list message", params: "Path: sessionId, jid, Body: { ... }" },
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/location", description: "Send location", params: "Path: sessionId, jid, Body: { location }" },
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/poll", description: "Send poll", params: "Path: sessionId, jid, Body: { poll }" },
@@ -73,7 +75,9 @@ export default function ApiDocsPage() {
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/[messageId]/react", description: "Send reaction", params: "Path: sessionId, jid, messageId" },
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/contact", description: "Send contact", params: "Path: sessionId, jid, Body: { vcard }" },
         { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/[jid]/forward", description: "Forward message", params: "Path: sessionId, jid, Body: { messageId }" },
-        { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/broadcast", description: "Broadcast message", params: "Path: sessionId, Body: { jids[], message }" },
+        { category: "Messaging", method: "POST", path: "/api/messages/[sessionId]/broadcast", description: "Broadcast message", params: "Path: sessionId, Body: { recipients[], message, delay }" },
+        { category: "Messaging", method: "GET", path: "/api/messages/[sessionId]/broadcast/history", description: "Get broadcast history", params: "Path: sessionId, Query: limit, offset" },
+        { category: "Messaging", method: "GET", path: "/api/messages/[sessionId]/broadcast/history/[logId]", description: "Get broadcast detail", params: "Path: sessionId, logId" },
         { category: "Messaging", method: "DELETE", path: "/api/messages/[sessionId]/[jid]/[messageId]", description: "Delete message", params: "Path: sessionId, jid, messageId" },
 
         { category: "Messaging", method: "GET", path: "/api/messages/[sessionId]/download/[messageId]/media", description: "Download media", params: "Path: sessionId, messageId" },

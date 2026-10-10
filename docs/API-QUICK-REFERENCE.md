@@ -2,6 +2,8 @@
 
 Quick reference guide for common API operations in WA-AKG.
 
+> **Version**: 1.6.1 | **Last Updated**: June 2026
+
 ## Base URL
 
 ```
@@ -16,8 +18,11 @@ Use NextAuth session cookies (automatic when logged in via browser).
 ### API Key
 Add header to all requests:
 ```
-X-API-Key: ak_your-api-key-here
+X-API-Key: wag_your-api-key-here
 ```
+
+> [!TIP]
+> Generate API key via Dashboard → Settings → API Keys. Format: `wag_` + 32 random characters.
 
 ---
 
@@ -260,8 +265,8 @@ WhatsApp uses JID (Jabber ID) format:
 ## User Roles
 
 - `SUPERADMIN` - Full system access, can manage all users and sessions
-- `OWNER` - Can manage own sessions and resources
-- `STAFF` - Limited access to assigned sessions
+- `STAFF` - Elevated staff privileges, can manage assigned sessions and operational tools
+- `USER` - Standard user, can manage own personal sessions and resources
 
 ---
 
@@ -281,10 +286,11 @@ WhatsApp uses JID (Jabber ID) format:
 
 1. **Always verify session status** before sending messages
 2. **Use webhooks** instead of polling for real-time updates
-3. **Add delays** between bulk operations to avoid rate limiting
-4. **Store API keys securely** - never commit to version control
-5. **URL-encode JIDs** when using them in URL paths
-6. **Check response status** and handle errors appropriately
+3. **Verify webhook HMAC** — every webhook signed with `X-Webhook-Signature`. See [HMAC Verification Guide](./API_DOCUMENTATION.md#-webhook-hmac-verification)
+4. **Add delays** between bulk operations to avoid rate limiting
+5. **Store API keys securely** - never commit to version control
+6. **URL-encode JIDs** when using them in URL paths
+7. **Check response status** and handle errors appropriately
 
 ---
 
@@ -367,5 +373,9 @@ except Exception as e:
 ```
 
 ---
+
+<div align="center">
+  **Version**: 1.6.1
+</div>
 
 For complete documentation, see [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)

@@ -58,10 +58,21 @@ export async function POST(
         }
 
         const body = await request.json();
-        const { keyword, response, matchType, isMedia, mediaUrl } = body;
+        const { keyword, response, matchType, isMedia, mediaUrl, mediaType, triggerType } = body;
 
-        if (!keyword || !response) {
-            return NextResponse.json({ status: false, message: "Missing required fields", error: "Missing required fields" }, { status: 400 });
+        if (!keyword || (!response && !mediaUrl)) {
+            return NextResponse.json({ status: false, message: "Keyword and either response or media are required", error: "Missing required fields" }, { status: 400 });
+        }
+
+        if (isMedia && mediaUrl) {
+            const { validateSafeUrl } = await import("@/lib/security");
+            const urlValidation = await validateSafeUrl(mediaUrl);
+            if (!urlValidation.valid) {
+                return NextResponse.json(
+                    { status: false, message: `Invalid media URL: ${urlValidation.error}`, error: urlValidation.error },
+                    { status: 400 }
+                );
+            }
         }
 
         const canAccess = await canAccessSession(user.id, user.role, sessionId);
@@ -85,8 +96,9 @@ export async function POST(
             matchType: matchType || "EXACT",
             isMedia: isMedia || false,
             mediaUrl: mediaUrl || null,
+            mediaType: mediaType || null,
             // @ts-ignore: triggerType exists in generated schema but may be stale in editor types
-            triggerType: (body.triggerType as string) || "ALL"
+            triggerType: (triggerType as string) || "ALL"
         };
 
         const newRule = await prisma.autoReply.create({
@@ -102,41 +114,3 @@ export async function POST(
 
 }
 
-/**
- * @deprecated This endpoint is deprecated. Use DELETE /api/autoreplies/{sessionId}/{replyId} instead.
- * This endpoint will be removed in a future version.
- */
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ sessionId: string }> }
-) {
-    console.warn('[DEPRECATED] DELETE /api/autoreplies/{id} is deprecated. Use DELETE /api/autoreplies/{sessionId}/{replyId} instead.');
-    const { sessionId: id } = await params;
-
-    try {
-        const user = await getAuthenticatedUser(request);
-        if (!user) {
-            return NextResponse.json({ status: false, message: "Unauthorized", error: "Unauthorized" }, { status: 401 });
-        }
-
-        const rule = await prisma.autoReply.findUnique({
-            where: { id },
-            include: { session: true }
-        });
-
-        if (!rule) {
-            return NextResponse.json({ status: false, message: "Rule not found", error: "Rule not found" }, { status: 404 });
-        }
-
-        const canAccess = await canAccessSession(user.id, user.role, rule.session.sessionId);
-        if (!canAccess) {
-            return NextResponse.json({ status: false, message: "Forbidden - Cannot access this session", error: "Forbidden - Cannot access this session" }, { status: 403 });
-        }
-
-        await prisma.autoReply.delete({ where: { id } });
-        return NextResponse.json({ status: true, message: "Rule deleted successfully", data: { success: true } });
-
-    } catch (error) {
-        return NextResponse.json({ status: false, message: "Internal Server Error", error: "Internal Server Error" }, { status: 500 });
-    }
-}

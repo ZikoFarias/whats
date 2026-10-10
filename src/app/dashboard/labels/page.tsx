@@ -229,7 +229,7 @@ export default function LabelsPage() {
         if (!sessionId) return;
         setChatLabelsLoading(true);
         try {
-            const res = await fetch(`/api/labels/${sessionId}/list/${labelId}`);
+            const res = await fetch(`/api/labels/${sessionId}/chats?labelId=${labelId}`);
             const data = await res.json();
             if (res.ok) {
                 setChatLabels(data.data || []);

@@ -150,37 +150,43 @@ export async function bindAutoReply(sock: WASocket, sessionId: string) {
 
                         if (rule.isMedia && rule.mediaUrl) {
                             const url = rule.mediaUrl;
-                            const isVideo = url.endsWith('.mp4') || url.endsWith('.avi') || url.endsWith('.mov');
-                            const isDocument = url.endsWith('.pdf') || url.endsWith('.doc') || url.endsWith('.docx') || url.endsWith('.zip');
-
+                            const type = (rule as any).mediaType || "document";
+                            
                             try {
-                                const res = await fetch(url);
-                                if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-                                const buffer = Buffer.from(await res.arrayBuffer());
+                                const { safeFetchBuffer } = await import("@/lib/security");
+                                const { buffer, contentType, fileName } = await safeFetchBuffer(url, {
+                                    maxBytes: 25 * 1024 * 1024,
+                                    timeoutMs: 15000
+                                });
 
-                                if (isVideo) {
-                                    await sock.sendMessage(remoteJid, {
-                                        video: buffer,
-                                        caption: rule.response
-                                    }, { quoted: msg });
-                                } else if (isDocument) {
-                                    await sock.sendMessage(remoteJid, {
-                                        document: buffer,
-                                        caption: rule.response,
-                                        mimetype: 'application/octet-stream',
-                                        fileName: url.split('/').pop() || 'document'
-                                    }, { quoted: msg });
-                                } else {
-                                    await sock.sendMessage(remoteJid, {
-                                        image: buffer,
-                                        caption: rule.response
-                                    }, { quoted: msg });
+                                let payload: any = {};
+                                if (rule.response) {
+                                    payload.caption = rule.response;
                                 }
+
+                                if (type === "image") {
+                                    payload.image = buffer;
+                                    payload.mimetype = contentType || "image/jpeg";
+                                } else if (type === "video") {
+                                    payload.video = buffer;
+                                    payload.mimetype = contentType || "video/mp4";
+                                } else if (type === "audio") {
+                                    payload.audio = buffer;
+                                    payload.mimetype = contentType || "audio/mp4";
+                                } else {
+                                    payload.document = buffer;
+                                    payload.mimetype = contentType || "application/octet-stream";
+                                    payload.fileName = fileName || "document";
+                                }
+
+                                await sock.sendMessage(remoteJid, payload, { quoted: msg });
                             } catch (err: any) {
-                                logger.error("AutoReply", `Failed to send media auto-reply from URL: ${err.message}. Falling back to text.`);
-                                await sock.sendMessage(remoteJid, { text: rule.response }, { quoted: msg });
+                                logger.error("AutoReply", `Failed to send media auto-reply: ${err.message}. Falling back to text if response exists.`);
+                                if (rule.response) {
+                                    await sock.sendMessage(remoteJid, { text: rule.response }, { quoted: msg });
+                                }
                             }
-                        } else {
+                        } else if (rule.response) {
                             await sock.sendMessage(remoteJid, { text: rule.response }, { quoted: msg });
                         }
 

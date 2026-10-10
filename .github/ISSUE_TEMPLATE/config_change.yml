@@ -1,0 +1,45 @@
+name: ⚙️ Config / Setup Change
+description: Request a change to configuration, environment, or infrastructure
+title: "[Config]: "
+labels: ["configuration", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Config / setup change.** Make sure to explain the impact.
+
+  - type: dropdown
+    id: config_type
+    attributes:
+      label: Configuration Type
+      options:
+        - WhatsApp (Baileys / pairing)
+        - Database (MySQL / Prisma)
+        - Docker / Deployment
+        - Authentication (NextAuth)
+        - Environment Variables
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Change Description
+      description: What needs to change and why
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact Analysis
+      description: What effect will this have on the system? Is it a breaking change?
+      placeholder: "Changing DATABASE_URL will affect Prisma connections..."
+
+  - type: textarea
+    id: migration
+    attributes:
+      label: Migration Steps
+      description: If migration is needed, write the step-by-step

@@ -1,0 +1,51 @@
+name: ✨ Feature Request
+description: Propose a new feature for WA-AKG
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Got a feature idea? Awesome!** Explain it clearly so it can be considered.
+
+  - type: input
+    id: title
+    attributes:
+      label: Feature Title
+      description: A short name for the proposed feature
+      placeholder: "AI-powered auto-reply"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the feature in detail
+      placeholder: "Bot can auto-reply using local LLM / OpenAI API..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use Case / Benefits
+      description: Who benefits? Why is it important?
+      placeholder: "Group admins can enable smart auto-replies without additional setup..."
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Are there any current workarounds? Have you tried any?
+
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Willing to help implement?
+      description: Are you open to opening a PR for this feature?
+      options:
+        - "No, just an idea"
+        - "Yes, I can help"
+        - "Maybe, depends on scope"

@@ -2,7 +2,7 @@
 
 # WhatsApp AI Gateway — Complete API Reference
 
-Professional WhatsApp Gateway REST API with **120 routes** for complete WhatsApp automation.
+Professional WhatsApp Gateway REST API with **86 routes** for complete WhatsApp automation.
 
 ## 🔐 Authentication
 
@@ -23,7 +23,1066 @@ All endpoints require one of the following authentication methods:
 
 ---
 
+## 📂 Media
+
+### \[GET\] /media/{filename}
+
+**Get uploaded media file**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `filename` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | File data |
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/media/image.jpg" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+## 📂 Groups
+
+### \[POST\] /groups/{sessionId}/{jid}/leave
+
+**Leave a group**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Left the group successfully |
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/leave" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[GET\] /groups/{sessionId}
+
+**List all groups**
+
+Get all groups associated with the session
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | List of groups |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Resource not found |
+| `500` | Failed to fetch groups |
+
+**Response Example (`200`):**
+
+```json
+[
+  {
+    "id": "string",
+    "subject": "string",
+    "desc": "string",
+    "owner": "string",
+    "size": 0,
+    "isCommunity": true,
+    "linkedParentJid": "string",
+    "participants": [
+      {
+        "id": "string",
+        "admin": "string"
+      }
+    ]
+  }
+]
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/groups/session-01" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[POST\] /groups/{sessionId}/create
+
+**Create new group**
+
+Create a new group with specified participants
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `subject` | string | ✅ Yes | — |
+| `participants` | array of string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "subject": "VIP Customers",
+  "participants": [
+    "628123456789@s.whatsapp.net"
+  ]
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Group created |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to create group |
+| `503` | Session not connected or ready |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `group` | object | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "group": {
+    "id": "string",
+    "subject": "string",
+    "desc": "string",
+    "owner": "string",
+    "size": 0,
+    "isCommunity": true,
+    "linkedParentJid": "string",
+    "participants": [
+      {
+        "id": "string",
+        "admin": "string"
+      }
+    ]
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/groups/session-01/create" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"subject":"VIP Customers","participants":["628123456789@s.whatsapp.net"]}'
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/subject
+
+**Update group subject**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `subject` | string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "subject": "string"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Subject updated |
+| `400` | Invalid subject |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to update subject |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+| `subject` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "subject": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/subject" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"subject":"string"}'
+```
+
+---
+
+### \[PUT\] /groups/{jid}/subject
+
+**Update group name**
+
+Update group subject (max 100 characters, requires admin)
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `jid` | path | ✅ Yes | string | URL-encoded group JID |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `sessionId` | string | ✅ Yes | — |
+| `subject` | string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "sessionId": "string",
+  "subject": "string"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Subject updated |
+| `400` | Invalid request (missing fields or subject too long) |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to update group subject |
+| `503` | Session not connected or ready |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+| `subject` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "Group subject updated successfully",
+  "subject": "New Subject"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/subject" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId":"string","subject":"string"}'
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/members
+
+**Manage group members**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `action` | string | ✅ Yes | **Options:** `add`, `remove`, `promote`, `demote` |
+| `participants` | array of string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "action": "add",
+  "participants": [
+    "string"
+  ]
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Members updated |
+| `400` | Invalid action |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to update members |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+| `result` | array of object | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "result": [
+    {
+      "text": "Hello from WA-AKG!"
+    }
+  ]
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/members" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"action":"add","participants":["string"]}'
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/invite
+
+**Revoke invite code**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Invite revoked |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to revoke code |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+| `newInviteCode` | string | No | — |
+| `inviteUrl` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "newInviteCode": "string",
+  "inviteUrl": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/invite" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[GET\] /groups/{sessionId}/{jid}/invite
+
+**Get invite code**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Invite code |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to get code |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `inviteCode` | string | No | — |
+| `inviteUrl` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "inviteCode": "string",
+  "inviteUrl": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/invite" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[GET\] /groups/{sessionId}/{jid}
+
+**Get group details**
+
+Get detailed group information
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Group details |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Resource not found |
+| `500` | Failed to fetch details |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | No | — |
+| `subject` | string | No | — |
+| `subjectOwner` | string | No | — |
+| `subjectTime` | number | No | — |
+| `desc` | string | No | — |
+| `descOwner` | string | No | — |
+| `descId` | string | No | — |
+| `owner` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "id": "string",
+  "subject": "string",
+  "subjectOwner": "string",
+  "subjectTime": 0,
+  "desc": "string",
+  "descOwner": "string",
+  "descId": "string",
+  "owner": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[POST\] /groups/{jid}/leave
+
+**Leave group**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `sessionId` | string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "sessionId": "string"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Left group |
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/leave" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"sessionId":"string"}'
+```
+
+---
+
+### \[POST\] /groups/{sessionId}/invite/accept
+
+**Accept group invite**
+
+Join a group using an invite code
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `inviteCode` | string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "inviteCode": "string"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Group invite accepted |
+| `400` | Invalid/Expired code |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to accept invite |
+| `503` | Session not connected or ready |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+| `groupJid` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string",
+  "groupJid": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/groups/session-01/invite/accept" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"inviteCode":"string"}'
+```
+
+---
+
+### \[DELETE\] /groups/{sessionId}/{jid}/picture
+
+**Remove group picture**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Picture removed |
+
+#### cURL Example
+
+```bash
+curl -X DELETE "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/picture" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/picture
+
+**Update group picture**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`multipart/form-data`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `file` | string (binary) | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "file": "(binary)"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Picture updated |
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/picture" \
+  -H "X-API-Key: your-api-key" \
+  -F "file=@/path/to/file.jpg" \
+  -F "type=image" \
+  -F "caption=Hello"
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/settings
+
+**Update group settings**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `setting` | string | ✅ Yes | announcement (admins only send), not_announcement (all send), locked (admins only edit), unlocked (all edit) **Options:** `announcement`, `not_announcement`, `locked`, `unlocked` |
+| `value` | boolean | No | Ignored but required |
+
+**Example:**
+
+```json
+{
+  "setting": "announcement",
+  "value": true
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Settings updated |
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/settings" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"setting":"announcement","value":true}'
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/description
+
+**Update group description**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `description` | string | No | — |
+
+**Example:**
+
+```json
+{
+  "description": "string"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Description updated |
+| `400` | Invalid input |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to update |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `description` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "description": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/description" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"string"}'
+```
+
+---
+
+### \[PUT\] /groups/{sessionId}/{jid}/ephemeral
+
+**Toggle disappearing messages**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `expiration` | integer | ✅ Yes | **Options:** `0`, `86400`, `604800`, `7776000` |
+
+**Example:**
+
+```json
+{
+  "expiration": 0
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Ephemeral toggled |
+| `400` | Invalid expiration |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to toggle |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `expiration` | integer | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "expiration": 0
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/ephemeral" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"expiration":0}'
+```
+
+---
+
+## 📂 Documentation
+
+### \[GET\] /docs
+
+**Get Swagger JSON specification**
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Swagger JSON spec |
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/docs" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+## 📂 Chats
+
+### \[GET\] /chats/by-label/{labelId}
+
+**Get chats by label ID**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `labelId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | List of chats with the label |
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/chats/by-label/label_01" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
 ## 📂 Web Authentication
+
+### \[POST\] /auth/register
+
+**Register a new user**
+
+Register a user via web.
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `name` | string | ✅ Yes | — |
+| `email` | string | ✅ Yes | — |
+| `password` | string | ✅ Yes | — |
+
+**Example:**
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123"
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | User registered |
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/auth/register" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Doe","email":"john@example.com","password":"password123"}'
+```
+
+---
 
 ### \[GET\] /auth/session
 
@@ -359,11 +1418,6 @@ Content-Type: application/json
 | `enablePing` | boolean | No | — |
 | `enableUptime` | boolean | No | — |
 | `removeBgApiKey` | string, nullable | No | — |
-| `antiSpamEnabled` | boolean | No | Enable random delays to avoid WhatsApp bans |
-| `spamLimit` | integer | No | Max messages allowed in the interval window (default 5) |
-| `spamInterval` | integer | No | Time window in seconds (default 10) |
-| `spamDelayMin` | integer | No | Min random delay in ms (default 1000) |
-| `spamDelayMax` | integer | No | Max random delay in ms (default 3000) |
 
 **Example:**
 
@@ -682,9 +1736,17 @@ Get all users who have been granted access to the specified session. Only the se
 | Code | Description |
 | :--- | :--- |
 | `200` | Access list retrieved |
-| `401` | Unauthorized |
+| `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Only session owner can manage access |
 | `404` | Session not found |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `message` | string | No | — |
+| `data` | array of object | No | — |
 
 **Response Example (`200`):**
 
@@ -694,15 +1756,15 @@ Get all users who have been granted access to the specified session. Only the se
   "message": "Access list retrieved successfully",
   "data": [
     {
-      "id": "clx789def",
-      "sessionId": "clx123abc",
-      "userId": "clx456ghi",
-      "createdAt": "2026-03-20T15:00:00.000Z",
+      "id": "string",
+      "sessionId": "string",
+      "userId": "string",
+      "createdAt": "2026-01-15T08:00:00.000Z",
       "user": {
-        "id": "clx456ghi",
-        "name": "Staff User",
-        "email": "staff@example.com",
-        "role": "STAFF"
+        "id": "string",
+        "name": "string",
+        "email": "string",
+        "role": "string"
       }
     }
   ]
@@ -722,7 +1784,7 @@ curl -X GET "http://localhost:3000/api/sessions/marketing-1/access" \
 
 **Grant access to another user**
 
-Grant session access to another registered user by email. Only the session owner or SUPERADMIN can use this endpoint. Cannot grant access to the session owner themselves or to SUPERADMINs (who already have access to all sessions).
+Grant session access to another registered user by email. Only the session owner or SUPERADMIN can use this endpoint. Cannot grant access to the session owner or SUPERADMINs.
 
 #### Parameters
 
@@ -741,7 +1803,7 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `email` | string | ✅ Yes | Email address of the user to grant access |
+| `email` | string (email) | ✅ Yes | Email of the user to grant access |
 
 **Example:**
 
@@ -757,31 +1819,10 @@ Content-Type: application/json
 | :--- | :--- |
 | `201` | Access granted successfully |
 | `400` | Validation error / Cannot grant to owner / SUPERADMIN already has access |
-| `401` | Unauthorized |
+| `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Only session owner can manage access |
 | `404` | Session or user not found |
-| `409` | User already has access |
-
-**Response Example (`201`):**
-
-```json
-{
-  "status": true,
-  "message": "Access granted to staff@example.com",
-  "data": {
-    "id": "clx789def",
-    "sessionId": "clx123abc",
-    "userId": "clx456ghi",
-    "createdAt": "2026-03-20T15:00:00.000Z",
-    "user": {
-      "id": "clx456ghi",
-      "name": "Staff User",
-      "email": "staff@example.com",
-      "role": "STAFF"
-    }
-  }
-}
-```
+| `409` | User already has access to this session |
 
 #### cURL Example
 
@@ -833,76 +1874,9 @@ Content-Type: application/json
 | :--- | :--- |
 | `200` | Access revoked successfully |
 | `400` | Validation error |
-| `401` | Unauthorized |
+| `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Only session owner can manage access |
 | `404` | Session or access record not found |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Access revoked successfully",
-  "data": null
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/sessions/marketing-1/access" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"clx456ghi"}'
-```
-
----
-
-## 📂 Messaging (Deprecated)
-
-### ~~\[POST\] /chat/send~~
-
-> ⚠️ **DEPRECATED** — ⚠️ **DEPRECATED**: Use POST /messages/{sessionId}/{jid}/send instead. This endpoint will be removed in a future version.\n\nUniversal endpoint for sending text, images, videos, documents, and stickers
-
-**[DEPRECATED] Send message (text/media/sticker)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `message` | object | ✅ Yes | Message content (text, image, sticker, etc.) |
-| `mentions` | array of string | No | List of JIDs to mention |
-
-**Example:**
-
-```json
-{
-  "sessionId": "sales-01",
-  "jid": "628123456789@s.whatsapp.net",
-  "message": {
-    "text": "Hello from WA-AKG!"
-  },
-  "mentions": [
-    "628123456789@s.whatsapp.net"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Message sent |
-| `503` | Session not connected or ready |
 
 **Response Fields (`200`):**
 
@@ -927,64 +1901,10 @@ Content-Type: application/json
 #### cURL Example
 
 ```bash
-curl -X POST "http://localhost:3000/api/chat/send" \
+curl -X DELETE "http://localhost:3000/api/sessions/marketing-1/access" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"sessionId":"sales-01","jid":"628123456789@s.whatsapp.net","message":{"text":"Hello from WA-AKG!"},"mentions":["628123456789@s.whatsapp.net"]}'
-```
-
----
-
-### ~~\[POST\] /chat/{sessionId}/send~~
-
-> ⚠️ **DEPRECATED** — ⚠️ **DEPRECATED**: Use POST /messages/{sessionId}/{jid}/send instead.
-
-**[DEPRECATED] Send message**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `jid` | string | ✅ Yes | — |
-| `message` | object | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "jid": "string",
-  "message": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Message sent |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/chat/session-01/send" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"jid":"string","message":{"text":"Hello from WA-AKG!"}}'
+  -d '{"userId":"clx456ghi"}'
 ```
 
 ---
@@ -1056,9 +1976,17 @@ Content-Type: application/json
 ```json
 {
   "status": true,
-  "message": "Operation successful",
+  "message": "Message sent successfully",
   "data": {
-    "text": "Hello from WA-AKG!"
+    "key": {
+      "remoteJid": "628123456789@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3EB01234567890"
+    },
+    "message": {
+      "conversation": "Hello from WA-AKG!"
+    },
+    "messageTimestamp": "1678901234"
   }
 }
 ```
@@ -1155,6 +2083,116 @@ curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whats
 
 ---
 
+### \[POST\] /messages/{sessionId}/{jid}/interactive
+
+**Send interactive message (Native Flow buttons, CTA, List)**
+
+Send modern WhatsApp Native Flow interactive messages including quick replies, CTA URL links, CTA call buttons, copy-to-clipboard code, and single select lists.
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | Session identifier |
+| `jid` | path | ✅ Yes | string | Recipient JID (e.g. 628123456789@s.whatsapp.net or 08123456789) |
+
+#### Headers
+
+```
+X-API-Key: your-api-key
+Content-Type: application/json
+```
+
+#### Request Body (`application/json`)
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `title` | string | No | — |
+| `body` | string | No | — |
+| `footer` | string | No | — |
+| `header` | object | No | — |
+| `buttons` | array of object | No | Array of interactive action buttons |
+
+**Example:**
+
+```json
+{
+  "title": "Interactive Message Title",
+  "body": "Hello! Please select one of the options below:",
+  "footer": "Powered by WA-AKG",
+  "header": {
+    "title": "Announcement",
+    "image": {
+      "url": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800"
+    }
+  },
+  "buttons": [
+    {
+      "type": "quick_reply",
+      "displayText": "Confirm Order",
+      "id": "btn_confirm",
+      "url": "https://example.com",
+      "phoneNumber": "+628123456789",
+      "copyCode": "PROMO2026",
+      "title": "Menu List",
+      "sections": [
+        {
+          "title": "Available Packages",
+          "rows": [
+            {
+              "id": "pkg_basic",
+              "title": "Basic Plan",
+              "description": "Affordable starter package"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Interactive message sent successfully |
+| `400` | Bad Request - Missing required content |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to send interactive message |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `message` | string | No | — |
+| `data` | object, nullable | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "status": true,
+  "message": "Operation successful",
+  "data": {
+    "text": "Hello from WA-AKG!"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whatsapp.net/interactive" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Interactive Message Title","body":"Hello! Please select one of the options below:","footer":"Powered by WA-AKG","header":{"title":"Announcement","image":{"url":"https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800"}},"buttons":[{"type":"quick_reply","displayText":"Confirm Order","id":"btn_confirm","url":"https://example.com","phoneNumber":"+628123456789","copyCode":"PROMO2026","title":"Menu List","sections":[{"title":"Available Packages","rows":[{"id":"pkg_basic","title":"Basic Plan","description":"Affordable starter package"}]}]}]}'
+```
+
+---
+
 ### \[POST\] /messages/{sessionId}/broadcast
 
 **Broadcast message to multiple recipients**
@@ -1232,76 +2270,135 @@ curl -X POST "http://localhost:3000/api/messages/session-01/broadcast" \
 
 ---
 
-### ~~\[POST\] /messages/broadcast~~
+### \[GET\] /messages/{sessionId}/broadcast/history
 
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/broadcast instead. This endpoint will be removed in a future version.
+**Get broadcast history**
 
-**Broadcast message (DEPRECATED)**
+Retrieve list of past broadcasts with status, sent/failed counts (persisted in DB)
 
-#### Headers
+#### Parameters
 
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `recipients` | array of string | ✅ Yes | — |
-| `message` | string | ✅ Yes | — |
-| `delay` | number | No | Intended delay between messages (ms). Note: implementation uses additional random 10-20s delay. **Default:** `2000` |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "recipients": [
-    "628123456789@s.whatsapp.net",
-    "628987654321@s.whatsapp.net"
-  ],
-  "message": "Flash Sale! 50% off",
-  "delay": 0
-}
-```
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `limit` | query | No | integer | Max results (max 50) **Default:** `20` |
+| `offset` | query | No | integer | Pagination offset **Default:** `0` |
 
 #### Responses
 
 | Code | Description |
 | :--- | :--- |
-| `200` | Broadcast started (background processing) |
-| `400` | Invalid request (validation error) |
+| `200` | Broadcast history |
 | `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Access denied |
-| `500` | Failed to start broadcast |
-| `503` | Session not connected or ready |
 
 **Response Fields (`200`):**
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
+| `status` | boolean | No | — |
+| `data` | array of object | No | — |
+| `total` | integer | No | — |
+| `limit` | integer | No | — |
+| `offset` | integer | No | — |
 
 **Response Example (`200`):**
 
 ```json
 {
-  "success": true,
-  "message": "Broadcast started in background"
+  "status": true,
+  "data": [
+    {
+      "id": "string",
+      "sessionId": "string",
+      "message": "string",
+      "total": 0,
+      "sent": 0,
+      "failed": 0,
+      "status": "running",
+      "delay": 0,
+      "startedAt": "2026-01-15T08:00:00.000Z",
+      "completedAt": "2026-01-15T08:00:00.000Z"
+    }
+  ],
+  "total": 0,
+  "limit": 0,
+  "offset": 0
 }
 ```
 
 #### cURL Example
 
 ```bash
-curl -X POST "http://localhost:3000/api/messages/broadcast" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","recipients":["628123456789@s.whatsapp.net","628987654321@s.whatsapp.net"],"message":"Flash Sale! 50% off","delay":0}'
+curl -X GET "http://localhost:3000/api/messages/session-01/broadcast/history?limit=value&offset=value" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[GET\] /messages/{sessionId}/broadcast/history/{logId}
+
+**Get broadcast detail**
+
+Retrieve full detail of a specific broadcast including per-recipient status
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `logId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Broadcast detail |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Broadcast not found |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `data` | object | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "status": true,
+  "data": {
+    "id": "string",
+    "sessionId": "string",
+    "message": "string",
+    "total": 0,
+    "sent": 0,
+    "failed": 0,
+    "status": "string",
+    "delay": 0,
+    "startedAt": "2026-01-15T08:00:00.000Z",
+    "completedAt": "2026-01-15T08:00:00.000Z",
+    "recipients": [
+      {
+        "id": "string",
+        "jid": "string",
+        "status": "pending",
+        "error": "string",
+        "sentAt": "2026-01-15T08:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/messages/session-01/broadcast/history/value" \
+  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -1383,87 +2480,6 @@ curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whats
 
 ---
 
-### ~~\[POST\] /messages/poll~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/poll instead. This endpoint will be removed in a future version.
-
-**Send poll message (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `question` | string | ✅ Yes | — |
-| `options` | array of string | ✅ Yes | — |
-| `selectableCount` | integer | No | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "question": "What's your favorite product?",
-  "options": [
-    "Product A",
-    "Product B",
-    "Product C"
-  ],
-  "selectableCount": 1
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Poll sent |
-| `400` | Invalid request (missing fields or options out of range) |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to send poll |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/poll" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","question":"What's your favorite product?","options":["Product A","Product B","Product C"],"selectableCount":1}'
-```
-
----
-
 ### \[POST\] /messages/{sessionId}/{jid}/location
 
 **Send location**
@@ -1535,85 +2551,6 @@ curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whats
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"latitude":-6.2088,"longitude":106.8456,"name":"Central Park","address":"Jakarta, Indonesia"}'
-```
-
----
-
-### ~~\[POST\] /messages/location~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/location instead. This endpoint will be removed in a future version.
-
-**Send location (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `latitude` | number | ✅ Yes | — |
-| `longitude` | number | ✅ Yes | — |
-| `name` | string | No | — |
-| `address` | string | No | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "latitude": -6.2088,
-  "longitude": 106.8456,
-  "name": "Office",
-  "address": "Jakarta, Indonesia"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Location sent |
-| `400` | Invalid request (missing fields or coordinates out of range) |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to send location |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/location" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","latitude":-6.2088,"longitude":106.8456,"name":"Office","address":"Jakarta, Indonesia"}'
 ```
 
 ---
@@ -1692,84 +2629,6 @@ curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whats
 
 ---
 
-### ~~\[POST\] /messages/contact~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/contact instead. This endpoint will be removed in a future version.
-
-**Send contact card (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `contacts` | array of object | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "contacts": [
-    {
-      "displayName": "string",
-      "vcard": "string"
-    }
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Contact sent |
-| `400` | Invalid request (missing fields or empty contacts) |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to send contact |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/contact" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","contacts":[{"displayName":"string","vcard":"string"}]}'
-```
-
----
-
 ### \[GET\] /messages/{sessionId}/download/{messageId}/media
 
 **Download message media**
@@ -1796,38 +2655,6 @@ Download media from a message (direct binary or redirect)
 
 ```bash
 curl -X GET "http://localhost:3000/api/messages/session-01/download/MSG_ID_123/media" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /messages/{id}/media~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /messages/{sessionId}/{messageId}/media instead. This endpoint will be removed in a future version.
-
-**Download message media (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Binary media file |
-| `400` | sessionId is required |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Cannot access session or message |
-| `404` | Message not found or has no media |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/messages/abc123/media?sessionId=session-01" \
   -H "X-API-Key: your-api-key"
 ```
 
@@ -2216,77 +3043,6 @@ curl -X GET "http://localhost:3000/api/messages/sales-01/search?q=invoice&jid=62
 
 ---
 
-### ~~\[POST\] /messages/react~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/{messageId}/react instead. This endpoint will be removed in a future version.
-
-**React to message with emoji (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `messageId` | string | ✅ Yes | — |
-| `emoji` | string | ✅ Yes | Emoji or empty string to remove |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "messageId": "3EB0ABCD1234567890",
-  "emoji": "👍"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Reaction sent |
-| `400` | Invalid request (missing fields) |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to send reaction |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "Reaction sent"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/react" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","messageId":"3EB0ABCD1234567890","emoji":"👍"}'
-```
-
----
-
 ### \[POST\] /messages/{sessionId}/{jid}/list
 
 **Send list message**
@@ -2360,87 +3116,6 @@ curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whats
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"title":"Our Services","options":["Web Dev","App Dev","UI/UX"],"footer":"Choose one"}'
-```
-
----
-
-### ~~\[POST\] /messages/list~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/list instead. This endpoint will be removed in a future version.
-
-**Send list message (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `title` | string | ✅ Yes | — |
-| `options` | array of string | ✅ Yes | — |
-| `footer` | string | No | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "title": "Our Services",
-  "options": [
-    "Web Dev",
-    "App Dev",
-    "UI/UX"
-  ],
-  "footer": "Choose one"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List message sent |
-| `400` | Missing fields or empty options |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to send list message |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/list" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","title":"Our Services","options":["Web Dev","App Dev","UI/UX"],"footer":"Choose one"}'
 ```
 
 ---
@@ -2520,79 +3195,6 @@ curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whats
 
 ---
 
-### ~~\[POST\] /messages/spam~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/spam instead. This endpoint will be removed in a future version.
-
-**Message bombing (Spam) (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `message` | string | ✅ Yes | — |
-| `count` | integer | No | **Default:** `10` |
-| `delay` | integer | No | Delay in ms **Default:** `500` |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "message": "Check our new catalog!",
-  "count": 5,
-  "delay": 1000
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Spam started |
-| `400` | Missing required fields |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to start spam |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "Bombing 5 messages started"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/spam" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","message":"Check our new catalog!","count":5,"delay":1000}'
-```
-
----
-
 ### \[POST\] /messages/{sessionId}/{jid}/sticker
 
 **Send sticker**
@@ -2663,80 +3265,6 @@ Content-Type: application/json
 
 ```bash
 curl -X POST "http://localhost:3000/api/messages/session-01/628123456789@s.whatsapp.net/sticker" \
-  -H "X-API-Key: your-api-key" \
-  -F "file=@/path/to/file.jpg" \
-  -F "type=image" \
-  -F "caption=Hello"
-```
-
----
-
-### ~~\[POST\] /messages/sticker~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/{jid}/sticker instead. This endpoint will be removed in a future version.
-
-**Send sticker (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`multipart/form-data`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `file` | string (binary) | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "file": "(binary)"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Sticker sent |
-| `400` | Missing required fields |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to create sticker |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/sticker" \
   -H "X-API-Key: your-api-key" \
   -F "file=@/path/to/file.jpg" \
   -F "type=image" \
@@ -2821,79 +3349,6 @@ curl -X POST "http://localhost:3000/api/messages/session-01/forward" \
 
 ---
 
-### ~~\[POST\] /messages/forward~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /messages/{sessionId}/forward instead. This endpoint will be removed in a future version.
-
-**Forward message (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `fromJid` | string | ✅ Yes | Source chat JID |
-| `messageId` | string | ✅ Yes | — |
-| `toJids` | array of string | ✅ Yes | Recipient JIDs |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "fromJid": "string",
-  "messageId": "string",
-  "toJids": [
-    "string"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Message forwarded |
-| `400` | Invalid request (missing fields or empty recipients) |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to forward message |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "Message forwarded to 1 recipient(s)"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/messages/forward" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","fromJid":"string","messageId":"string","toJids":["string"]}'
-```
-
----
-
 ### \[DELETE\] /messages/{sessionId}/{jid}/{messageId}
 
 **Delete message for everyone**
@@ -2943,11 +3398,19 @@ curl -X DELETE "http://localhost:3000/api/messages/session-01/628123456789@s.wha
 
 ---
 
-### ~~\[DELETE\] /messages/delete~~
+### \[PATCH\] /messages/{sessionId}/{jid}/{messageId}
 
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use DELETE /messages/{sessionId}/{jid}/{messageId} instead. This endpoint will be removed in a future version.
+**Edit a sent message**
 
-**Delete message (DEPRECATED)**
+Edit text of a sent message
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+| `messageId` | path | ✅ Yes | string | — |
 
 #### Headers
 
@@ -2960,17 +3423,13 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `messageId` | string | ✅ Yes | — |
+| `text` | string | ✅ Yes | — |
 
 **Example:**
 
 ```json
 {
-  "sessionId": "string",
-  "jid": "string",
-  "messageId": "string"
+  "text": "Updated text message"
 }
 ```
 
@@ -2978,36 +3437,36 @@ Content-Type: application/json
 
 | Code | Description |
 | :--- | :--- |
-| `200` | Message deleted |
-| `400` | Message too old (> 7 minutes) or missing fields |
+| `200` | Message edited |
+| `400` | Bad Request |
 | `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Access denied |
-| `500` | Failed to delete message |
+| `500` | Failed to edit message |
 | `503` | Session not connected or ready |
 
 **Response Fields (`200`):**
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
+| `status` | boolean | No | — |
 | `message` | string | No | — |
 
 **Response Example (`200`):**
 
 ```json
 {
-  "success": true,
-  "message": "Message deleted for everyone"
+  "status": true,
+  "message": "Message edited successfully"
 }
 ```
 
 #### cURL Example
 
 ```bash
-curl -X DELETE "http://localhost:3000/api/messages/delete" \
+curl -X PATCH "http://localhost:3000/api/messages/session-01/628123456789@s.whatsapp.net/MSG_ID_123" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","messageId":"string"}'
+  -d '{"text":"Updated text message"}'
 ```
 
 ---
@@ -3578,2185 +4037,6 @@ curl -X POST "http://localhost:3000/api/chat/session-01/check" \
 
 ---
 
-### ~~\[POST\] /chat/check~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /chat/{sessionId}/check instead. This endpoint will be removed in a future version.
-
-**Check numbers (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `numbers` | array of string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "numbers": [
-    "628123456789",
-    "628987654321"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Validation results |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `results` | array of object | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "results": [
-    {
-      "number": "string",
-      "exists": true,
-      "jid": "string",
-      "error": "string"
-    }
-  ]
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/chat/check" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","numbers":["628123456789","628987654321"]}'
-```
-
----
-
-### ~~\[PUT\] /chat/read~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /chat/{sessionId}/{jid}/read instead. This endpoint will be removed in a future version.
-
-**Mark messages as read (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `messageIds` | array of string | No | Optional: specific message IDs to mark |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "messageIds": [
-    "string"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Marked as read |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/chat/read" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","messageIds":["string"]}'
-```
-
----
-
-### ~~\[PUT\] /chat/archive~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /chat/{sessionId}/{jid}/archive instead. This endpoint will be removed in a future version.
-
-**Archive/unarchive chat (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `archive` | boolean | ✅ Yes | true to archive, false to unarchive |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "archive": true
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Chat archived/unarchived |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/chat/archive" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","archive":true}'
-```
-
----
-
-### ~~\[PUT\] /chat/mute~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /chat/{sessionId}/{jid}/mute instead. This endpoint will be removed in a future version.
-
-**Mute/unmute chat (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `mute` | boolean | ✅ Yes | — |
-| `duration` | integer | No | Duration in seconds (default: 8 hours) |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "mute": true,
-  "duration": 3600
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Chat muted/unmuted |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/chat/mute" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","mute":true,"duration":3600}'
-```
-
----
-
-### ~~\[PUT\] /chat/pin~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /chat/{sessionId}/{jid}/pin instead. This endpoint will be removed in a future version.
-
-**Pin/unpin chat (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `pin` | boolean | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "pin": true
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Chat pinned/unpinned |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/chat/pin" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","pin":true}'
-```
-
----
-
-### ~~\[POST\] /chat/presence~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /chat/{sessionId}/{jid}/presence instead. This endpoint will be removed in a future version.
-
-**Send presence (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-| `presence` | string | ✅ Yes | **Options:** `composing`, `recording`, `paused`, `available`, `unavailable` |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string",
-  "presence": "composing"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Presence sent |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/chat/presence" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","presence":"composing"}'
-```
-
----
-
-### ~~\[POST\] /chat/profile-picture~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /chat/{sessionId}/{jid}/profile-picture instead. This endpoint will be removed in a future version.
-
-**Get profile picture URL (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Profile picture URL |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `jid` | string | No | — |
-| `profilePicUrl` | string, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "jid": "string",
-  "profilePicUrl": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/chat/profile-picture" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string"}'
-```
-
----
-
-## 📂 Groups
-
-### \[GET\] /groups/{sessionId}
-
-**List all groups**
-
-Get all groups associated with the session
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List of groups |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Resource not found |
-| `500` | Failed to fetch groups |
-
-**Response Example (`200`):**
-
-```json
-[
-  {
-    "id": "string",
-    "subject": "string",
-    "desc": "string",
-    "owner": "string",
-    "size": 0,
-    "participants": [
-      {
-        "id": "string",
-        "admin": "string"
-      }
-    ]
-  }
-]
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/groups/session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /groups~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /groups/{sessionId} instead. This endpoint will be removed in a future version.
-
-**List all groups (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List of groups |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/groups?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### \[POST\] /groups/{sessionId}/create
-
-**Create new group**
-
-Create a new group with specified participants
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `subject` | string | ✅ Yes | — |
-| `participants` | array of string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "subject": "VIP Customers",
-  "participants": [
-    "628123456789@s.whatsapp.net"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group created |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to create group |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `group` | object | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "group": {
-    "id": "string",
-    "subject": "string",
-    "desc": "string",
-    "owner": "string",
-    "size": 0,
-    "participants": [
-      {
-        "id": "string",
-        "admin": "string"
-      }
-    ]
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/groups/session-01/create" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"subject":"VIP Customers","participants":["628123456789@s.whatsapp.net"]}'
-```
-
----
-
-### ~~\[POST\] /groups/create~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /groups/{sessionId}/create instead. This endpoint will be removed in a future version.
-
-**Create new group (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `subject` | string | ✅ Yes | — |
-| `participants` | array of string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "subject": "VIP Customers",
-  "participants": [
-    "628123456789@s.whatsapp.net"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group created |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/groups/create" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","subject":"VIP Customers","participants":["628123456789@s.whatsapp.net"]}'
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/subject
-
-**Update group subject**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `subject` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "subject": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Subject updated |
-| `400` | Invalid subject |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to update subject |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-| `subject` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string",
-  "subject": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/subject" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"subject":"string"}'
-```
-
----
-
-### \[PUT\] /groups/{jid}/subject
-
-**Update group name**
-
-Update group subject (max 100 characters, requires admin)
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | URL-encoded group JID |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `subject` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "subject": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Subject updated |
-| `400` | Invalid request (missing fields or subject too long) |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to update group subject |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-| `subject` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "Group subject updated successfully",
-  "subject": "New Subject"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/subject" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","subject":"string"}'
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/members
-
-**Manage group members**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `action` | string | ✅ Yes | **Options:** `add`, `remove`, `promote`, `demote` |
-| `participants` | array of string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "action": "add",
-  "participants": [
-    "string"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Members updated |
-| `400` | Invalid action |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to update members |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-| `result` | array of object | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string",
-  "result": [
-    {
-      "text": "Hello from WA-AKG!"
-    }
-  ]
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/members" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"action":"add","participants":["string"]}'
-```
-
----
-
-### ~~\[PUT\] /groups/{jid}/members~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /groups/{sessionId}/{jid}/members instead. This endpoint will be removed in a future version.
-
-**Manage group members (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `action` | string | ✅ Yes | **Options:** `add`, `remove`, `promote`, `demote` |
-| `participants` | array of string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "action": "add",
-  "participants": [
-    "string"
-  ]
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Members updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/members" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","action":"add","participants":["string"]}'
-```
-
----
-
-### \[GET\] /groups/{sessionId}/{jid}/invite
-
-**Get invite code**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Invite code |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to get code |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `inviteCode` | string | No | — |
-| `inviteUrl` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "inviteCode": "string",
-  "inviteUrl": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/invite" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/invite
-
-**Revoke invite code**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Invite revoked |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to revoke code |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-| `newInviteCode` | string | No | — |
-| `inviteUrl` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string",
-  "newInviteCode": "string",
-  "inviteUrl": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/invite" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /groups/{jid}/invite~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /groups/{sessionId}/{jid}/invite instead. This endpoint will be removed in a future version.
-
-**Get invite code (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Invite code |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `inviteCode` | string | No | — |
-| `inviteUrl` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "inviteCode": "string",
-  "inviteUrl": "https://chat.whatsapp.com/AbCdEfGh"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/invite?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PUT\] /groups/{jid}/invite~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /groups/{sessionId}/{jid}/invite instead. This endpoint will be removed in a future version.
-
-**Revoke invite code (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Invite code revoked, new code generated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/invite" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string"}'
-```
-
----
-
-### \[GET\] /groups/{sessionId}/{jid}
-
-**Get group details**
-
-Get detailed group information
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group details |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Resource not found |
-| `500` | Failed to fetch details |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | string | No | — |
-| `subject` | string | No | — |
-| `subjectOwner` | string | No | — |
-| `subjectTime` | number | No | — |
-| `desc` | string | No | — |
-| `descOwner` | string | No | — |
-| `descId` | string | No | — |
-| `owner` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "id": "string",
-  "subject": "string",
-  "subjectOwner": "string",
-  "subjectTime": 0,
-  "desc": "string",
-  "descOwner": "string",
-  "descId": "string",
-  "owner": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /groups/{jid}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /groups/{sessionId}/{jid} instead. This endpoint will be removed in a future version.
-
-**Get group details (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group details |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Group not found |
-| `500` | Internal Server Error |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | string | No | — |
-| `subject` | string | No | — |
-| `subjectOwner` | string | No | — |
-| `subjectTime` | integer | No | — |
-| `size` | integer | No | — |
-| `creation` | integer | No | — |
-| `owner` | string | No | — |
-| `desc` | string | No | — |
-| `descId` | string | No | — |
-| `restrict` | boolean | No | — |
-| `announce` | boolean | No | — |
-| `participants` | array of object | No | — |
-| `ephemeralDuration` | integer | No | — |
-| `inviteCode` | string | No | — |
-| `pictureUrl` | string, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "id": "string",
-  "subject": "string",
-  "subjectOwner": "string",
-  "subjectTime": 0,
-  "size": 0,
-  "creation": 0,
-  "owner": "string",
-  "desc": "string",
-  "descId": "string",
-  "restrict": true,
-  "announce": true,
-  "participants": [
-    {
-      "id": "string",
-      "admin": "string"
-    }
-  ],
-  "ephemeralDuration": 0,
-  "inviteCode": "string",
-  "pictureUrl": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/groups/628123456789@s.whatsapp.net?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### \[POST\] /groups/{jid}/leave
-
-**Leave group**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Left group |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/leave" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string"}'
-```
-
----
-
-### \[POST\] /groups/{sessionId}/invite/accept
-
-**Accept group invite**
-
-Join a group using an invite code
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `inviteCode` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "inviteCode": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group invite accepted |
-| `400` | Invalid/Expired code |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to accept invite |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-| `groupJid` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string",
-  "groupJid": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/groups/session-01/invite/accept" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"inviteCode":"string"}'
-```
-
----
-
-### ~~\[POST\] /groups/invite/accept~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /groups/{sessionId}/invite/accept instead. This endpoint will be removed in a future version.
-
-**Accept group invite (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `inviteCode` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "inviteCode": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group invite accepted |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/groups/invite/accept" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","inviteCode":"string"}'
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/picture
-
-**Update group picture**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`multipart/form-data`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `file` | string (binary) | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "file": "(binary)"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Picture updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/picture" \
-  -H "X-API-Key: your-api-key" \
-  -F "file=@/path/to/file.jpg" \
-  -F "type=image" \
-  -F "caption=Hello"
-```
-
----
-
-### \[DELETE\] /groups/{sessionId}/{jid}/picture
-
-**Remove group picture**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Picture removed |
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/picture" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PUT\] /groups/{jid}/picture~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /groups/{sessionId}/{jid}/picture instead. This endpoint will be removed in a future version.
-
-**Update group picture (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`multipart/form-data`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | No | — |
-| `file` | string (binary) | No | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "file": "(binary)"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Picture updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/picture" \
-  -H "X-API-Key: your-api-key" \
-  -F "file=@/path/to/file.jpg" \
-  -F "type=image" \
-  -F "caption=Hello"
-```
-
----
-
-### ~~\[DELETE\] /groups/{jid}/picture~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use DELETE /groups/{sessionId}/{jid}/picture instead. This endpoint will be removed in a future version.
-
-**Remove group picture (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Picture removed |
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/picture?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/settings
-
-**Update group settings**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `setting` | string | ✅ Yes | announcement (admins only send), not_announcement (all send), locked (admins only edit), unlocked (all edit) **Options:** `announcement`, `not_announcement`, `locked`, `unlocked` |
-| `value` | boolean | No | Ignored but required |
-
-**Example:**
-
-```json
-{
-  "setting": "announcement",
-  "value": true
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Settings updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/settings" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"setting":"announcement","value":true}'
-```
-
----
-
-### ~~\[PUT\] /groups/{jid}/settings~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /groups/{sessionId}/{jid}/settings instead. This endpoint will be removed in a future version.
-
-**Update group settings (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `setting` | string | ✅ Yes | announcement (admins only send), not_announcement (all send), locked (admins only edit), unlocked (all edit) **Options:** `announcement`, `not_announcement`, `locked`, `unlocked` |
-| `value` | boolean | ✅ Yes | Ignored but required |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "setting": "announcement",
-  "value": true
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Settings updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/settings" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","setting":"announcement","value":true}'
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/description
-
-**Update group description**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `description` | string | No | — |
-
-**Example:**
-
-```json
-{
-  "description": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Description updated |
-| `400` | Invalid input |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to update |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `description` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "description": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/description" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"description":"string"}'
-```
-
----
-
-### ~~\[PUT\] /groups/{jid}/description~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /groups/{sessionId}/{jid}/description instead. This endpoint will be removed in a future version.
-
-**Update group description (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `description` | string | No | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "description": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Group description updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/description" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","description":"string"}'
-```
-
----
-
-### \[PUT\] /groups/{sessionId}/{jid}/ephemeral
-
-**Toggle disappearing messages**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `expiration` | integer | ✅ Yes | **Options:** `0`, `86400`, `604800`, `7776000` |
-
-**Example:**
-
-```json
-{
-  "expiration": 0
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Ephemeral toggled |
-| `400` | Invalid expiration |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to toggle |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `expiration` | integer | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "expiration": 0
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/session-01/628123456789@s.whatsapp.net/ephemeral" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"expiration":0}'
-```
-
----
-
-### ~~\[PUT\] /groups/{jid}/ephemeral~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /groups/{sessionId}/{jid}/ephemeral instead. This endpoint will be removed in a future version.
-
-**Toggle disappearing messages (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `expiration` | integer | ✅ Yes | 0 (off), 86400 (24h), 604800 (7d), 7776000 (90d) **Options:** `0`, `86400`, `604800`, `7776000` |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "expiration": 0
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Ephemeral settings updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/groups/628123456789@s.whatsapp.net/ephemeral" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","expiration":0}'
-```
-
----
-
-## 📂 Contacts
-
-### \[GET\] /contacts/{sessionId}
-
-**List contacts**
-
-Get all contacts with search and pagination
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `page` | query | No | integer | **Default:** `1` |
-| `limit` | query | No | integer | **Default:** `10` |
-| `search` | query | No | string | Search by name, notify, jid |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Paginated contacts |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `data` | array of object | No | — |
-| `meta` | object | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "data": [
-    {
-      "jid": "628123456789@s.whatsapp.net",
-      "name": "John Doe",
-      "notify": "string",
-      "profilePic": "string"
-    }
-  ],
-  "meta": {
-    "total": 0,
-    "page": 0,
-    "limit": 0,
-    "totalPages": 0
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/contacts/session-01?page=value&limit=value&search=value" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /contacts~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /contacts/{sessionId} instead. This endpoint will be removed in a future version.
-
-**List contacts (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
-| `page` | query | No | integer | **Default:** `1` |
-| `limit` | query | No | integer | **Default:** `10` |
-| `search` | query | No | string | Search by name, notify, jid |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Paginated contacts |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `data` | array of object | No | — |
-| `meta` | object | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "data": [
-    {
-      "jid": "628123456789@s.whatsapp.net",
-      "name": "John Doe",
-      "notify": "string",
-      "profilePic": "string"
-    }
-  ],
-  "meta": {
-    "total": 0,
-    "page": 0,
-    "limit": 0,
-    "totalPages": 0
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/contacts?sessionId=session-01&page=value&limit=value&search=value" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### \[POST\] /contacts/{sessionId}/{jid}/block
-
-**Block contact**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Contact blocked |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to block contact |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/contacts/session-01/628123456789@s.whatsapp.net/block" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[POST\] /contacts/block~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /contacts/{sessionId}/{jid}/block instead. This endpoint will be removed in a future version.
-
-**Block contact (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Contact blocked |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/contacts/block" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string"}'
-```
-
----
-
-### \[POST\] /contacts/{sessionId}/{jid}/unblock
-
-**Unblock contact**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `jid` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Contact unblocked |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `500` | Failed to unblock contact |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/contacts/session-01/628123456789@s.whatsapp.net/unblock" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[POST\] /contacts/unblock~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /contacts/{sessionId}/{jid}/unblock instead. This endpoint will be removed in a future version.
-
-**Unblock contact (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `jid` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "jid": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Contact unblocked |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/contacts/unblock" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string"}'
-```
-
----
-
 ## 📂 Profile
 
 ### \[GET\] /profile/{sessionId}
@@ -5955,6 +4235,54 @@ curl -X PUT "http://localhost:3000/api/profile/session-01/status" \
 
 ---
 
+### \[DELETE\] /profile/{sessionId}/picture
+
+**Remove profile picture**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Picture removed |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `503` | Session not connected or ready |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `message` | string | No | — |
+| `data` | object, nullable | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "status": true,
+  "message": "Operation successful",
+  "data": {
+    "text": "Hello from WA-AKG!"
+  }
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X DELETE "http://localhost:3000/api/profile/session-01/picture" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
 ### \[PUT\] /profile/{sessionId}/picture
 
 **Update profile picture**
@@ -6029,9 +4357,11 @@ curl -X PUT "http://localhost:3000/api/profile/session-01/picture" \
 
 ---
 
-### \[DELETE\] /profile/{sessionId}/picture
+## 📂 Auto Replies
 
-**Remove profile picture**
+### \[DELETE\] /autoreplies/{sessionId}
+
+**Delete all autoreplies**
 
 #### Parameters
 
@@ -6043,228 +4373,12 @@ curl -X PUT "http://localhost:3000/api/profile/session-01/picture" \
 
 | Code | Description |
 | :--- | :--- |
-| `200` | Picture removed |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `503` | Session not connected or ready |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
+| `200` | Autoreplies deleted |
 
 #### cURL Example
 
 ```bash
-curl -X DELETE "http://localhost:3000/api/profile/session-01/picture" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PUT\] /profile/name~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /profile/{sessionId}/name instead.
-
-**Update profile name (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `name` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "name": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Profile name updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/profile/name" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","name":"string"}'
-```
-
----
-
-### ~~\[PUT\] /profile/status~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /profile/{sessionId}/status instead.
-
-**Update profile status (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `status` | string | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "status": "string"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Profile status updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/profile/status" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","status":"string"}'
-```
-
----
-
-### ~~\[PUT\] /profile/picture~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /profile/{sessionId}/picture instead.
-
-**Update profile picture (DEPRECATED)**
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`multipart/form-data`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `file` | string (binary) | ✅ Yes | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "file": "(binary)"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Profile picture updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/profile/picture" \
-  -H "X-API-Key: your-api-key" \
-  -F "file=@/path/to/file.jpg" \
-  -F "type=image" \
-  -F "caption=Hello"
-```
-
----
-
-### ~~\[DELETE\] /profile/picture~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use DELETE /profile/{sessionId}/picture instead.
-
-**Remove profile picture (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Profile picture removed |
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/profile/picture?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /profile~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /profile/{sessionId} instead.
-
-**Get own profile (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Profile information |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/profile?sessionId=session-01" \
+curl -X DELETE "http://localhost:3000/api/autoreplies/session-01" \
   -H "X-API-Key: your-api-key"
 ```
 
@@ -6322,10 +4436,11 @@ Content-Type: application/json
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `keyword` | string | ✅ Yes | — |
-| `response` | string | ✅ Yes | — |
+| `response` | string | No | — |
 | `matchType` | string | No | **Options:** `EXACT`, `CONTAINS`, `STARTS_WITH`, `REGEX` |
 | `isMedia` | boolean | No | — |
 | `mediaUrl` | string | No | — |
+| `mediaType` | string | No | **Options:** `image`, `video`, `document`, `audio` |
 | `triggerType` | string | No | **Options:** `ALL`, `GROUP`, `PRIVATE` |
 
 **Example:**
@@ -6336,7 +4451,9 @@ Content-Type: application/json
   "response": "Hi there! How can I help?",
   "matchType": "EXACT",
   "triggerType": "ALL",
-  "isMedia": false
+  "isMedia": false,
+  "mediaUrl": null,
+  "mediaType": null
 }
 ```
 
@@ -6355,67 +4472,7 @@ Content-Type: application/json
 curl -X POST "http://localhost:3000/api/autoreplies/session-01" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"keyword":"hello","response":"Hi there! How can I help?","matchType":"EXACT","triggerType":"ALL","isMedia":false}'
-```
-
----
-
-### \[PUT\] /autoreplies/{sessionId}/{replyId}
-
-**Update auto-reply rule**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `replyId` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `keyword` | string | ✅ Yes | — |
-| `response` | string | ✅ Yes | — |
-| `isMedia` | boolean | No | — |
-| `mediaUrl` | string | No | — |
-| `triggerType` | string | No | **Options:** `ALL`, `GROUP`, `PRIVATE` |
-
-**Example:**
-
-```json
-{
-  "keyword": "hello",
-  "response": "Hi there! How can I help?",
-  "matchType": "EXACT",
-  "triggerType": "ALL",
-  "isMedia": false
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Rule updated |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Rule not found |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/autoreplies/session-01/reply_01" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"keyword":"hello","response":"Hi there! How can I help?","matchType":"EXACT","triggerType":"ALL","isMedia":false}'
+  -d '{"keyword":"hello","response":"Hi there! How can I help?","matchType":"EXACT","triggerType":"ALL","isMedia":false,"mediaUrl":null,"mediaType":null}'
 ```
 
 ---
@@ -6449,38 +4506,16 @@ curl -X DELETE "http://localhost:3000/api/autoreplies/session-01/reply_01" \
 
 ---
 
-### ~~\[GET\] /autoreplies~~
+### \[PUT\] /autoreplies/{sessionId}/{replyId}
 
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /autoreplies/{sessionId} instead.
-
-**List auto-reply rules (DEPRECATED)**
+**Update auto-reply rule**
 
 #### Parameters
 
 | Name | Located in | Required | Type | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List of auto-reply rules |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/autoreplies?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[POST\] /autoreplies~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /autoreplies/{sessionId} instead.
-
-**Create auto-reply rule (DEPRECATED)**
+| `sessionId` | path | ✅ Yes | string | — |
+| `replyId` | path | ✅ Yes | string | — |
 
 #### Headers
 
@@ -6493,100 +4528,24 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
 | `keyword` | string | ✅ Yes | — |
-| `response` | string | ✅ Yes | — |
-| `matchType` | string | No | **Options:** `EXACT`, `CONTAINS`, `STARTS_WITH` **Default:** `EXACT` |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "keyword": "price",
-  "response": "Our prices start at $10",
-  "matchType": "EXACT"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Rule created |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/autoreplies" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","keyword":"price","response":"Our prices start at $10","matchType":"EXACT"}'
-```
-
----
-
-### ~~\[GET\] /autoreplies/{id}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /autoreplies/{sessionId}/{replyId} instead.
-
-**Get auto-reply rule (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Auto-reply rule details |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/autoreplies/abc123" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PUT\] /autoreplies/{id}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** No direct replacement yet, delete and recreate.
-
-**Update auto-reply rule (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `keyword` | string | No | — |
 | `response` | string | No | — |
-| `matchType` | string | No | **Options:** `EXACT`, `CONTAINS`, `STARTS_WITH` |
+| `isMedia` | boolean | No | — |
+| `mediaUrl` | string | No | — |
+| `mediaType` | string | No | **Options:** `image`, `video`, `document`, `audio` |
+| `triggerType` | string | No | **Options:** `ALL`, `GROUP`, `PRIVATE` |
 
 **Example:**
 
 ```json
 {
-  "keyword": "string",
-  "response": "string",
-  "matchType": "EXACT"
+  "keyword": "hello",
+  "response": "Hi there! How can I help?",
+  "matchType": "EXACT",
+  "triggerType": "ALL",
+  "isMedia": false,
+  "mediaUrl": null,
+  "mediaType": null
 }
 ```
 
@@ -6595,46 +4554,47 @@ Content-Type: application/json
 | Code | Description |
 | :--- | :--- |
 | `200` | Rule updated |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Rule not found |
 
 #### cURL Example
 
 ```bash
-curl -X PUT "http://localhost:3000/api/autoreplies/abc123" \
+curl -X PUT "http://localhost:3000/api/autoreplies/session-01/reply_01" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"keyword":"string","response":"string","matchType":"EXACT"}'
-```
-
----
-
-### ~~\[DELETE\] /autoreplies/{id}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use DELETE /autoreplies/{sessionId}/{replyId} instead.
-
-**Delete auto-reply rule (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Rule deleted |
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/autoreplies/abc123" \
-  -H "X-API-Key: your-api-key"
+  -d '{"keyword":"hello","response":"Hi there! How can I help?","matchType":"EXACT","triggerType":"ALL","isMedia":false,"mediaUrl":null,"mediaType":null}'
 ```
 
 ---
 
 ## 📂 Scheduler
+
+### \[DELETE\] /scheduler/{sessionId}
+
+**Delete all scheduled messages for a session**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Scheduled messages deleted |
+
+#### cURL Example
+
+```bash
+curl -X DELETE "http://localhost:3000/api/scheduler/session-01" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
 
 ### \[GET\] /scheduler/{sessionId}
 
@@ -6686,10 +4646,12 @@ Content-Type: application/json
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
 | `jid` | string | ✅ Yes | — |
-| `content` | string | ✅ Yes | — |
+| `content` | string | No | — |
 | `sendAt` | string (date-time) | ✅ Yes | — |
 | `mediaUrl` | string | No | — |
-| `mediaType` | string | No | **Options:** `image`, `video`, `document` |
+| `mediaType` | string | No | **Options:** `image`, `video`, `document`, `audio` |
+| `cronExpression` | string | No | — |
+| `recurrenceRule` | string | No | — |
 
 **Example:**
 
@@ -6699,7 +4661,9 @@ Content-Type: application/json
   "content": "Reminder: Meeting in 10 mins",
   "sendAt": "2024-12-25T10:00:00.000Z",
   "mediaUrl": "https://example.com/image.jpg",
-  "mediaType": "image"
+  "mediaType": "image",
+  "cronExpression": "*/10 * * * *",
+  "recurrenceRule": "{\"type\":\"minutes\",\"value\":10}"
 }
 ```
 
@@ -6718,67 +4682,7 @@ Content-Type: application/json
 curl -X POST "http://localhost:3000/api/scheduler/session-01" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"jid":"628123456789@s.whatsapp.net","content":"Reminder: Meeting in 10 mins","sendAt":"2024-12-25T10:00:00.000Z","mediaUrl":"https://example.com/image.jpg","mediaType":"image"}'
-```
-
----
-
-### \[PUT\] /scheduler/{sessionId}/{scheduleId}
-
-**Update scheduled message**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `scheduleId` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `jid` | string | ✅ Yes | — |
-| `content` | string | ✅ Yes | — |
-| `sendAt` | string (date-time) | ✅ Yes | — |
-| `mediaUrl` | string | No | — |
-| `mediaType` | string | No | **Options:** `image`, `video`, `document` |
-
-**Example:**
-
-```json
-{
-  "jid": "628123456789@s.whatsapp.net",
-  "content": "Updated meeting reminder",
-  "sendAt": "2024-12-25T11:00:00.000Z",
-  "mediaUrl": "https://example.com/image.jpg",
-  "mediaType": "image"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Message updated |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Message not found |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/scheduler/session-01/sched_01" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"jid":"628123456789@s.whatsapp.net","content":"Updated meeting reminder","sendAt":"2024-12-25T11:00:00.000Z","mediaUrl":"https://example.com/image.jpg","mediaType":"image"}'
+  -d '{"jid":"628123456789@s.whatsapp.net","content":"Reminder: Meeting in 10 mins","sendAt":"2024-12-25T10:00:00.000Z","mediaUrl":"https://example.com/image.jpg","mediaType":"image","cronExpression":"*/10 * * * *","recurrenceRule":"{\"type\":\"minutes\",\"value\":10}"}'
 ```
 
 ---
@@ -6812,57 +4716,16 @@ curl -X DELETE "http://localhost:3000/api/scheduler/session-01/sched_01" \
 
 ---
 
-### ~~\[GET\] /scheduler~~
+### \[PUT\] /scheduler/{sessionId}/{scheduleId}
 
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /scheduler/{sessionId} instead.
-
-**List scheduled messages (DEPRECATED)**
+**Update scheduled message**
 
 #### Parameters
 
 | Name | Located in | Required | Type | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List of scheduled messages |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Session not found |
-| `500` | Internal Server Error |
-
-**Response Example (`200`):**
-
-```json
-[
-  {
-    "id": "string",
-    "sessionId": "string",
-    "jid": "string",
-    "content": "string",
-    "sendAt": "2026-01-15T08:00:00.000Z",
-    "status": "PENDING"
-  }
-]
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/scheduler?sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[POST\] /scheduler~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /scheduler/{sessionId} instead.
-
-**Schedule message (DEPRECATED)**
+| `sessionId` | path | ✅ Yes | string | — |
+| `scheduleId` | path | ✅ Yes | string | — |
 
 #### Headers
 
@@ -6875,21 +4738,25 @@ Content-Type: application/json
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
 | `jid` | string | ✅ Yes | — |
-| `content` | string | ✅ Yes | — |
+| `content` | string | No | — |
 | `sendAt` | string (date-time) | ✅ Yes | — |
-| `mediaUrl` | string, nullable | No | — |
+| `mediaUrl` | string | No | — |
+| `mediaType` | string | No | **Options:** `image`, `video`, `document`, `audio` |
+| `cronExpression` | string | No | — |
+| `recurrenceRule` | string | No | — |
 
 **Example:**
 
 ```json
 {
-  "sessionId": "string",
-  "jid": "string",
-  "content": "string",
-  "sendAt": "2024-01-18T10:00:00",
-  "mediaUrl": "string"
+  "jid": "628123456789@s.whatsapp.net",
+  "content": "Updated meeting reminder",
+  "sendAt": "2024-12-25T11:00:00.000Z",
+  "mediaUrl": "https://example.com/image.jpg",
+  "mediaType": "image",
+  "cronExpression": null,
+  "recurrenceRule": null
 }
 ```
 
@@ -6897,94 +4764,36 @@ Content-Type: application/json
 
 | Code | Description |
 | :--- | :--- |
-| `200` | Message scheduled |
-| `400` | Missing required fields |
+| `200` | Message updated |
 | `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Access denied |
-| `404` | Session not found |
-| `500` | Internal Server Error |
+| `404` | Message not found |
 
-**Response Fields (`200`):**
+#### cURL Example
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | string | No | — |
-| `sessionId` | string | No | — |
-| `jid` | string | No | — |
-| `content` | string | No | — |
-| `sendAt` | string (date-time) | No | — |
-| `status` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "id": "string",
-  "sessionId": "string",
-  "jid": "string",
-  "content": "string",
-  "sendAt": "2026-01-15T08:00:00.000Z",
-  "status": "PENDING"
-}
+```bash
+curl -X PUT "http://localhost:3000/api/scheduler/session-01/sched_01" \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"jid":"628123456789@s.whatsapp.net","content":"Updated meeting reminder","sendAt":"2024-12-25T11:00:00.000Z","mediaUrl":"https://example.com/image.jpg","mediaType":"image","cronExpression":null,"recurrenceRule":null}'
 ```
+
+---
+
+### \[POST\] /scheduler
+
+**Create a scheduled message task**
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Scheduled task created |
 
 #### cURL Example
 
 ```bash
 curl -X POST "http://localhost:3000/api/scheduler" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","jid":"string","content":"string","sendAt":"2024-01-18T10:00:00","mediaUrl":"string"}'
-```
-
----
-
-### ~~\[DELETE\] /scheduler/{id}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use DELETE /scheduler/{sessionId}/{scheduleId} instead.
-
-**Delete scheduled message (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Scheduled message deleted |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Message not found |
-| `500` | Internal server error |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/scheduler/abc123" \
   -H "X-API-Key: your-api-key"
 ```
 
@@ -7043,7 +4852,7 @@ Content-Type: application/json
 | `name` | string | ✅ Yes | — |
 | `url` | string | ✅ Yes | — |
 | `secret` | string | No | — |
-| `events` | array of string | ✅ Yes | Events to subscribe to: `message.received`, `message.sent`, `message.status`, `connection.update`, `group.update`, `contact.update`, `status.update`, `group.participant`, `message.deleted`, `message.edited` or `*` |
+| `events` | array of string | ✅ Yes | — |
 
 **Example:**
 
@@ -7074,6 +4883,35 @@ curl -X POST "http://localhost:3000/api/webhooks/session-01" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"name":"string","url":"string","secret":"string","events":["string"]}'
+```
+
+---
+
+### \[DELETE\] /webhooks/{sessionId}/{id}
+
+**Delete webhook**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `id` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Webhook deleted |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Webhook not found |
+
+#### cURL Example
+
+```bash
+curl -X DELETE "http://localhost:3000/api/webhooks/session-01/abc123" \
+  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -7140,176 +4978,6 @@ curl -X PUT "http://localhost:3000/api/webhooks/session-01/abc123" \
 
 ---
 
-### \[DELETE\] /webhooks/{sessionId}/{id}
-
-**Delete webhook**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `id` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Webhook deleted |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Webhook not found |
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/webhooks/session-01/abc123" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[GET\] /webhooks~~
-
-> ⚠️ **DEPRECATED** — 
-
-**List webhooks (DEPRECATED)**
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List of webhooks |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/webhooks" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[POST\] /webhooks~~
-
-> ⚠️ **DEPRECATED** — 
-
-**Create webhook (DEPRECATED)**
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Webhook created |
-
-#### cURL Example
-
-```bash
-curl -X POST "http://localhost:3000/api/webhooks" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PATCH\] /webhooks/{id}~~
-
-> ⚠️ **DEPRECATED** — 
-
-**Update webhook (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | string | No | — |
-| `url` | string (uri) | No | — |
-| `secret` | string | No | — |
-| `sessionId` | string | No | — |
-| `events` | array of string | No | — |
-| `isActive` | boolean | No | — |
-
-**Example:**
-
-```json
-{
-  "name": "string",
-  "url": "string",
-  "secret": "string",
-  "sessionId": "string",
-  "events": [
-    "string"
-  ],
-  "isActive": true
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Webhook updated |
-| `401` | Unauthorized - Invalid or missing API key |
-| `404` | Webhook not found |
-| `500` | Internal Server Error |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | string | No | — |
-| `name` | string | No | — |
-| `url` | string | No | — |
-| `secret` | string | No | — |
-| `events` | array of string | No | — |
-| `isActive` | boolean | No | — |
-| `sessionId` | string | No | — |
-| `userId` | string | No | — |
-| `createdAt` | string (date-time) | No | — |
-| `updatedAt` | string (date-time) | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "id": "string",
-  "name": "string",
-  "url": "string",
-  "secret": "string",
-  "events": [
-    "string"
-  ],
-  "isActive": true,
-  "sessionId": "string",
-  "userId": "string",
-  "createdAt": "2026-01-15T08:00:00.000Z",
-  "updatedAt": "2026-01-15T08:00:00.000Z"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X PATCH "http://localhost:3000/api/webhooks/abc123" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"string","url":"string","secret":"string","sessionId":"string","events":["string"],"isActive":true}'
-```
-
----
-
 ### \[DELETE\] /webhooks/{id}
 
 **Delete webhook**
@@ -7352,46 +5020,136 @@ curl -X DELETE "http://localhost:3000/api/webhooks/abc123" \
 
 ---
 
-## 📂 Users
+### \[POST\] /webhooks/{sessionId}/{id}/test
 
-### \[GET\] /users
+**Test webhook endpoint**
 
-**List users (SUPERADMIN only)**
+Fire a test payload to verify the webhook endpoint is reachable and responding correctly
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `id` | path | ✅ Yes | string | — |
 
 #### Responses
 
 | Code | Description |
 | :--- | :--- |
-| `200` | List of users |
+| `200` | Test result |
 | `401` | Unauthorized - Invalid or missing API key |
 | `403` | Forbidden - Access denied |
-| `500` | Internal Server Error |
+| `404` | Webhook not found |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `message` | string | No | — |
+| `data` | object | No | — |
 
 **Response Example (`200`):**
 
 ```json
-[
-  {
-    "id": "string",
-    "name": "string",
-    "email": "string",
-    "role": "string",
-    "createdAt": "2026-01-15T08:00:00.000Z",
-    "_count": {
-      "sessions": 0
-    }
+{
+  "status": true,
+  "message": "string",
+  "data": {
+    "success": true,
+    "statusCode": 0,
+    "responseBody": "string",
+    "responseTimeMs": 0,
+    "error": "string"
   }
-]
+}
 ```
 
 #### cURL Example
 
 ```bash
-curl -X GET "http://localhost:3000/api/users" \
+curl -X POST "http://localhost:3000/api/webhooks/session-01/abc123/test" \
   -H "X-API-Key: your-api-key"
 ```
 
 ---
+
+### \[GET\] /webhooks/{sessionId}/{id}/logs
+
+**Get webhook delivery logs**
+
+Retrieve delivery history for a specific webhook
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `id` | path | ✅ Yes | string | — |
+| `limit` | query | No | integer | **Default:** `50` |
+| `offset` | query | No | integer | **Default:** `0` |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Webhook delivery logs |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Webhook not found |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `data` | array of object | No | — |
+| `total` | integer | No | — |
+| `limit` | integer | No | — |
+| `offset` | integer | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "status": true,
+  "data": [
+    {
+      "id": "string",
+      "webhookId": "string",
+      "event": "string",
+      "status": "SUCCESS",
+      "requestUrl": "string",
+      "requestHeaders": {
+        "text": "Hello from WA-AKG!"
+      },
+      "requestBody": {
+        "text": "Hello from WA-AKG!"
+      },
+      "responseStatusCode": 0,
+      "responseBody": "string",
+      "responseTimeMs": 0,
+      "errorMessage": "string",
+      "createdAt": "2026-01-15T08:00:00.000Z"
+    }
+  ],
+  "total": 0,
+  "limit": 0,
+  "offset": 0
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/webhooks/session-01/abc123/logs?limit=value&offset=value" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+## 📂 Users
 
 ### \[POST\] /users
 
@@ -7411,7 +5169,7 @@ Content-Type: application/json
 | `name` | string | ✅ Yes | — |
 | `email` | string (email) | ✅ Yes | — |
 | `password` | string | ✅ Yes | — |
-| `role` | string | No | **Options:** `SUPERADMIN`, `OWNER`, `STAFF` **Default:** `OWNER` |
+| `role` | string | No | **Options:** `SUPERADMIN`, `STAFF`, `USER` **Default:** `USER` |
 
 **Example:**
 
@@ -7467,6 +5225,90 @@ curl -X POST "http://localhost:3000/api/users" \
 
 ---
 
+### \[GET\] /users
+
+**List users (SUPERADMIN only)**
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | List of users |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Internal Server Error |
+
+**Response Example (`200`):**
+
+```json
+[
+  {
+    "id": "string",
+    "name": "string",
+    "email": "string",
+    "role": "string",
+    "createdAt": "2026-01-15T08:00:00.000Z",
+    "_count": {
+      "sessions": 0
+    }
+  }
+]
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/users" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[DELETE\] /users/{id}
+
+**Delete user (SUPERADMIN only)**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `id` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | User deleted |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | User not found |
+| `500` | Internal Server Error |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X DELETE "http://localhost:3000/api/users/abc123" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
 ### \[PATCH\] /users/{id}
 
 **Update user (SUPERADMIN only)**
@@ -7491,7 +5333,7 @@ Content-Type: application/json
 | `name` | string | No | — |
 | `email` | string | No | — |
 | `password` | string | No | — |
-| `role` | string | No | **Options:** `SUPERADMIN`, `OWNER`, `STAFF` |
+| `role` | string | No | **Options:** `SUPERADMIN`, `STAFF`, `USER` |
 
 **Example:**
 
@@ -7547,85 +5389,6 @@ curl -X PATCH "http://localhost:3000/api/users/abc123" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"name":"string","email":"string","password":"string","role":"SUPERADMIN"}'
-```
-
----
-
-### \[DELETE\] /users/{id}
-
-**Delete user (SUPERADMIN only)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | User deleted |
-| `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | User not found |
-| `500` | Internal Server Error |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `message` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "success": true,
-  "message": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/users/abc123" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### \[GET\] /user/api-key
-
-**Get current API key**
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Current API key |
-| `401` | Unauthorized - Invalid or missing API key |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `apiKey` | string, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "apiKey": "string"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/user/api-key" \
-  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -7706,60 +5469,41 @@ curl -X DELETE "http://localhost:3000/api/user/api-key" \
 
 ---
 
-## 📂 Labels
+### \[GET\] /user/api-key
 
-### \[GET\] /labels/{sessionId}
-
-**List labels**
-
-Get all labels with chat count
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
+**Get current API key**
 
 #### Responses
 
 | Code | Description |
 | :--- | :--- |
-| `200` | List of labels |
+| `200` | Current API key |
 | `401` | Unauthorized - Invalid or missing API key |
-| `403` | Forbidden - Access denied |
-| `404` | Session not found |
 
 **Response Fields (`200`):**
 
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `success` | boolean | No | — |
-| `labels` | array of object | No | — |
+| `apiKey` | string, nullable | No | — |
 
 **Response Example (`200`):**
 
 ```json
 {
-  "success": true,
-  "labels": [
-    {
-      "id": "string",
-      "name": "string",
-      "color": 0,
-      "predefinedId": "string"
-    }
-  ]
+  "apiKey": "string"
 }
 ```
 
 #### cURL Example
 
 ```bash
-curl -X GET "http://localhost:3000/api/labels/session-01" \
+curl -X GET "http://localhost:3000/api/user/api-key" \
   -H "X-API-Key: your-api-key"
 ```
 
 ---
+
+## 📂 Labels
 
 ### \[POST\] /labels/{sessionId}
 
@@ -7837,77 +5581,151 @@ curl -X POST "http://localhost:3000/api/labels/session-01" \
 
 ---
 
-### ~~\[GET\] /labels~~
+### \[PUT\] /labels/{sessionId}
 
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /labels/{sessionId} instead.
-
-**List all labels (DEPRECATED)**
+**Update all labels or bulk update**
 
 #### Parameters
 
 | Name | Located in | Required | Type | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | query | ✅ Yes | string | — |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Labels updated |
+
+#### cURL Example
+
+```bash
+curl -X PUT "http://localhost:3000/api/labels/session-01" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[DELETE\] /labels/{sessionId}
+
+**Delete labels**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Labels deleted |
+
+#### cURL Example
+
+```bash
+curl -X DELETE "http://localhost:3000/api/labels/session-01" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[GET\] /labels/{sessionId}
+
+**List labels**
+
+Get all labels with chat count
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
 
 #### Responses
 
 | Code | Description |
 | :--- | :--- |
 | `200` | List of labels |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `404` | Session not found |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `labels` | array of object | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "labels": [
+    {
+      "id": "string",
+      "name": "string",
+      "color": 0,
+      "predefinedId": "string"
+    }
+  ]
+}
+```
 
 #### cURL Example
 
 ```bash
-curl -X GET "http://localhost:3000/api/labels?sessionId=session-01" \
+curl -X GET "http://localhost:3000/api/labels/session-01" \
   -H "X-API-Key: your-api-key"
 ```
 
 ---
 
-### ~~\[POST\] /labels~~
+### \[DELETE\] /labels/{sessionId}/{labelId}
 
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use POST /labels/{sessionId} instead.
+**Delete label**
 
-**Create label (DEPRECATED)**
+#### Parameters
 
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `name` | string | ✅ Yes | — |
-| `color` | integer | No | — |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "name": "string",
-  "color": 0
-}
-```
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `labelId` | path | ✅ Yes | string | — |
 
 #### Responses
 
 | Code | Description |
 | :--- | :--- |
-| `200` | Label created |
+| `200` | Label deleted |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `status` | boolean | No | — |
+| `message` | string | No | — |
+| `data` | object, nullable | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "status": true,
+  "message": "Operation successful",
+  "data": {
+    "text": "Hello from WA-AKG!"
+  }
+}
+```
 
 #### cURL Example
 
 ```bash
-curl -X POST "http://localhost:3000/api/labels" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","name":"string","color":0}'
+curl -X DELETE "http://localhost:3000/api/labels/session-01/label_01" \
+  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -7980,131 +5798,6 @@ curl -X PUT "http://localhost:3000/api/labels/session-01/label_01" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"name":"string","color":0}'
-```
-
----
-
-### \[DELETE\] /labels/{sessionId}/{labelId}
-
-**Delete label**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `sessionId` | path | ✅ Yes | string | — |
-| `labelId` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Label deleted |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `status` | boolean | No | — |
-| `message` | string | No | — |
-| `data` | object, nullable | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "status": true,
-  "message": "Operation successful",
-  "data": {
-    "text": "Hello from WA-AKG!"
-  }
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/labels/session-01/label_01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PUT\] /labels/{id}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /labels/{sessionId}/{labelId} instead.
-
-**Update label (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | string | No | — |
-| `color` | integer | No | — |
-
-**Example:**
-
-```json
-{
-  "name": "string",
-  "color": 0
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Label updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/labels/abc123" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"string","color":0}'
-```
-
----
-
-### ~~\[DELETE\] /labels/{id}~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use DELETE /labels/{sessionId}/{labelId} instead.
-
-**Delete label (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `id` | path | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Label deleted |
-
-#### cURL Example
-
-```bash
-curl -X DELETE "http://localhost:3000/api/labels/abc123" \
-  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -8236,90 +5929,6 @@ curl -X PUT "http://localhost:3000/api/labels/session-01/chat/628123456789@s.wha
 
 ---
 
-### ~~\[GET\] /labels/chat-labels~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use GET /labels/{sessionId}/chat/{jid}/labels instead.
-
-**Get chat labels (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | query | ✅ Yes | string | — |
-| `sessionId` | query | ✅ Yes | string | — |
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Chat labels |
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/labels/chat-labels?jid=628123456789@s.whatsapp.net&sessionId=session-01" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
-### ~~\[PUT\] /labels/chat-labels~~
-
-> ⚠️ **DEPRECATED** — **DEPRECATED:** Use PUT /labels/{sessionId}/chat/{jid}/labels instead.
-
-**Add or remove labels from chat (DEPRECATED)**
-
-#### Parameters
-
-| Name | Located in | Required | Type | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `jid` | query | ✅ Yes | string | — |
-
-#### Headers
-
-```
-X-API-Key: your-api-key
-Content-Type: application/json
-```
-
-#### Request Body (`application/json`)
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `sessionId` | string | ✅ Yes | — |
-| `labelIds` | array of string | ✅ Yes | — |
-| `action` | string | ✅ Yes | **Options:** `add`, `remove` |
-
-**Example:**
-
-```json
-{
-  "sessionId": "string",
-  "labelIds": [
-    "string"
-  ],
-  "action": "add"
-}
-```
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | Chat labels updated |
-
-#### cURL Example
-
-```bash
-curl -X PUT "http://localhost:3000/api/labels/chat-labels?jid=628123456789@s.whatsapp.net" \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"sessionId":"string","labelIds":["string"],"action":"add"}'
-```
-
----
-
 ### \[GET\] /chats/{sessionId}/by-label/{labelId}
 
 **Get chats by label**
@@ -8376,46 +5985,6 @@ curl -X GET "http://localhost:3000/api/chats/session-01/by-label/label_01" \
 ---
 
 ## 📂 Notifications
-
-### \[GET\] /notifications
-
-**List notifications**
-
-Get the last 50 notifications for the authenticated user
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | List of notifications |
-| `401` | Unauthorized - Invalid or missing API key |
-| `500` | Error fetching notifications |
-
-**Response Example (`200`):**
-
-```json
-[
-  {
-    "id": "string",
-    "userId": "string",
-    "title": "string",
-    "message": "string",
-    "type": "string",
-    "href": "string",
-    "read": true,
-    "createdAt": "2026-01-15T08:00:00.000Z"
-  }
-]
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/notifications" \
-  -H "X-API-Key: your-api-key"
-```
-
----
 
 ### \[POST\] /notifications
 
@@ -8487,6 +6056,46 @@ curl -X POST "http://localhost:3000/api/notifications" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"title":"Maintenance","message":"System update in 5 minutes","type":"INFO","href":"/settings","targetUserId":"string","broadcast":true}'
+```
+
+---
+
+### \[GET\] /notifications
+
+**List notifications**
+
+Get the last 50 notifications for the authenticated user
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | List of notifications |
+| `401` | Unauthorized - Invalid or missing API key |
+| `500` | Error fetching notifications |
+
+**Response Example (`200`):**
+
+```json
+[
+  {
+    "id": "string",
+    "userId": "string",
+    "title": "string",
+    "message": "string",
+    "type": "string",
+    "href": "string",
+    "read": true,
+    "createdAt": "2026-01-15T08:00:00.000Z"
+  }
+]
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/notifications" \
+  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -8609,45 +6218,6 @@ curl -X DELETE "http://localhost:3000/api/notifications/delete?id=abc123" \
 
 ## 📂 System
 
-### \[GET\] /settings/system
-
-**Get system settings**
-
-#### Responses
-
-| Code | Description |
-| :--- | :--- |
-| `200` | System settings |
-
-**Response Fields (`200`):**
-
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `id` | string | No | — |
-| `appName` | string | No | — |
-| `logoUrl` | string | No | — |
-| `timezone` | string | No | — |
-
-**Response Example (`200`):**
-
-```json
-{
-  "id": "default",
-  "appName": "WA-AKG",
-  "logoUrl": "https://example.com/logo.png",
-  "timezone": "Asia/Jakarta"
-}
-```
-
-#### cURL Example
-
-```bash
-curl -X GET "http://localhost:3000/api/settings/system" \
-  -H "X-API-Key: your-api-key"
-```
-
----
-
 ### \[POST\] /settings/system
 
 **Update system settings**
@@ -8716,6 +6286,45 @@ curl -X POST "http://localhost:3000/api/settings/system" \
   -H "X-API-Key: your-api-key" \
   -H "Content-Type: application/json" \
   -d '{"appName":"string","logoUrl":"string","timezone":"string"}'
+```
+
+---
+
+### \[GET\] /settings/system
+
+**Get system settings**
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | System settings |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | No | — |
+| `appName` | string | No | — |
+| `logoUrl` | string | No | — |
+| `timezone` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "id": "default",
+  "appName": "WA-AKG",
+  "logoUrl": "https://example.com/logo.png",
+  "timezone": "Asia/Jakarta"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X GET "http://localhost:3000/api/settings/system" \
+  -H "X-API-Key: your-api-key"
 ```
 
 ---
@@ -8930,6 +6539,98 @@ curl -X POST "http://localhost:3000/api/system/check-updates" \
 
 ---
 
+## 📂 Contacts
+
+### \[POST\] /contacts/{sessionId}/{jid}/block
+
+**Block contact**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Contact blocked |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to block contact |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/contacts/session-01/628123456789@s.whatsapp.net/block" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
+### \[POST\] /contacts/{sessionId}/{jid}/unblock
+
+**Unblock contact**
+
+#### Parameters
+
+| Name | Located in | Required | Type | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `sessionId` | path | ✅ Yes | string | — |
+| `jid` | path | ✅ Yes | string | — |
+
+#### Responses
+
+| Code | Description |
+| :--- | :--- |
+| `200` | Contact unblocked |
+| `401` | Unauthorized - Invalid or missing API key |
+| `403` | Forbidden - Access denied |
+| `500` | Failed to unblock contact |
+
+**Response Fields (`200`):**
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `success` | boolean | No | — |
+| `message` | string | No | — |
+
+**Response Example (`200`):**
+
+```json
+{
+  "success": true,
+  "message": "string"
+}
+```
+
+#### cURL Example
+
+```bash
+curl -X POST "http://localhost:3000/api/contacts/session-01/628123456789@s.whatsapp.net/unblock" \
+  -H "X-API-Key: your-api-key"
+```
+
+---
+
 ## 📦 Schemas
 
 ### Error
@@ -9079,7 +6780,7 @@ curl -X POST "http://localhost:3000/api/system/check-updates" \
 | `id` | string | No | — |
 | `sessionId` | string | No | — |
 | `url` | string | No | — |
-| `events` | array of string | No | — |
+| `events` | array of string | No | Events to subscribe to: message.received, message.sent, message.status, connection.update, group.update, contact.update, status.update, group.participant, message.deleted, message.edited or '*' |
 | `secret` | string | No | — |
 
 **Example:**
@@ -9096,6 +6797,46 @@ curl -X POST "http://localhost:3000/api/system/check-updates" \
 }
 ```
 
+### WebhookLog
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | No | — |
+| `webhookId` | string | No | — |
+| `event` | string | No | — |
+| `status` | string | No | **Options:** `SUCCESS`, `FAILED` |
+| `requestUrl` | string | No | — |
+| `requestHeaders` | object | No | — |
+| `requestBody` | object | No | — |
+| `responseStatusCode` | integer, nullable | No | — |
+| `responseBody` | string, nullable | No | — |
+| `responseTimeMs` | integer, nullable | No | — |
+| `errorMessage` | string, nullable | No | — |
+| `createdAt` | string (date-time) | No | — |
+
+**Example:**
+
+```json
+{
+  "id": "string",
+  "webhookId": "string",
+  "event": "string",
+  "status": "SUCCESS",
+  "requestUrl": "string",
+  "requestHeaders": {
+    "text": "Hello from WA-AKG!"
+  },
+  "requestBody": {
+    "text": "Hello from WA-AKG!"
+  },
+  "responseStatusCode": 0,
+  "responseBody": "string",
+  "responseTimeMs": 0,
+  "errorMessage": "string",
+  "createdAt": "2026-01-15T08:00:00.000Z"
+}
+```
+
 ### Group
 
 | Field | Type | Required | Description |
@@ -9105,6 +6846,8 @@ curl -X POST "http://localhost:3000/api/system/check-updates" \
 | `desc` | string | No | — |
 | `owner` | string | No | — |
 | `size` | number | No | — |
+| `isCommunity` | boolean | No | Whether this group is a WhatsApp Community announcement group |
+| `linkedParentJid` | string, nullable | No | JID of the parent community if this is a sub-group |
 | `participants` | array of object | No | — |
 
 **Example:**
@@ -9116,6 +6859,8 @@ curl -X POST "http://localhost:3000/api/system/check-updates" \
   "desc": "string",
   "owner": "string",
   "size": 0,
+  "isCommunity": true,
+  "linkedParentJid": "string",
   "participants": [
     {
       "id": "string",
@@ -9170,6 +6915,60 @@ curl -X POST "http://localhost:3000/api/system/check-updates" \
   "descOwner": "string",
   "descId": "string",
   "owner": "string"
+}
+```
+
+### BroadcastLog
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | No | — |
+| `sessionId` | string | No | — |
+| `message` | string | No | — |
+| `total` | integer | No | — |
+| `sent` | integer | No | — |
+| `failed` | integer | No | — |
+| `status` | string | No | **Options:** `running`, `completed`, `cancelled` |
+| `delay` | integer | No | — |
+| `startedAt` | string (date-time) | No | — |
+| `completedAt` | string, nullable (date-time) | No | — |
+
+**Example:**
+
+```json
+{
+  "id": "string",
+  "sessionId": "string",
+  "message": "string",
+  "total": 0,
+  "sent": 0,
+  "failed": 0,
+  "status": "running",
+  "delay": 0,
+  "startedAt": "2026-01-15T08:00:00.000Z",
+  "completedAt": "2026-01-15T08:00:00.000Z"
+}
+```
+
+### BroadcastRecipient
+
+| Field | Type | Required | Description |
+| :--- | :--- | :--- | :--- |
+| `id` | string | No | — |
+| `jid` | string | No | — |
+| `status` | string | No | **Options:** `pending`, `sent`, `failed` |
+| `error` | string, nullable | No | — |
+| `sentAt` | string, nullable (date-time) | No | — |
+
+**Example:**
+
+```json
+{
+  "id": "string",
+  "jid": "string",
+  "status": "pending",
+  "error": "string",
+  "sentAt": "2026-01-15T08:00:00.000Z"
 }
 ```
 

@@ -126,7 +126,7 @@ export default function BotSettingsPage() {
         setPrivacyLoading(true);
         try {
             const res = await fetch(`/api/sessions/${sessionId}/settings`, {
-                method: "POST",
+                method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     config: {

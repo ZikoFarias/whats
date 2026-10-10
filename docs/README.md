@@ -25,11 +25,14 @@ Welcome to the internal documentation portal for **WA-AKG**. Use the links below
 
 ## 🚦 Getting Started (Programmatically)
 
-1. **Auth**: Get your key via Dashboard Settings -> include `X-API-Key`.
+1. **Auth**: Get your key via Dashboard Settings → include `X-API-Key`.
 2. **Session**: Create one via `/api/sessions` and scan the QR.
 3. **Automate**: Register a URL via `/api/webhooks` to start receiving events.
 
+> [!IMPORTANT]
+> Pastikan `AUTH_SECRET` sudah diset di `.env` sebelum menjalankan aplikasi.
+
 ---
 <div align="center">
-  **Version**: 1.5.3 | **Build Status**: Stable
+  **Version**: 1.6.1 | **Build Status**: Stable
 </div>

@@ -16,6 +16,9 @@ import { bindAutoReply } from "./store/autoreply";
 import { bindPpGuard } from "./store/ppguard";
 import { antispam } from "./antispam";
 import { logger } from "@/lib/logger";
+import { isInteractiveContent, handleInteractiveMessageDispatch } from "./interactive";
+
+const MAX_RECONNECT_ATTEMPTS = 3;
 
 export class WhatsAppInstance {
     socket: WASocket | null = null;
@@ -30,6 +33,9 @@ export class WhatsAppInstance {
     pairingCode: string | null = null;
 
     isStopped: boolean = false;
+    private reconnectCount: number = 0;
+    /** Called when instance auto-stops or logs out — lets manager remove it from Map */
+    onRemovedFromManager: (() => void) | null = null;
 
     constructor(sessionId: string, userId: string, io: Server) {
         this.sessionId = sessionId;
@@ -42,6 +48,10 @@ export class WhatsAppInstance {
             where: { sessionId: this.sessionId },
             include: { botConfig: true }
         });
+        if (!sessionData) {
+            logger.warn("Instance", `Session ${this.sessionId} not found in DB, aborting init`);
+            return;
+        }
         this.config = sessionData?.config || {};
         const botConfig = (sessionData as any)?.botConfig;
 
@@ -58,22 +68,40 @@ export class WhatsAppInstance {
             },
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             markOnlineOnConnect: botConfig?.alwaysOnline ?? true,
-            syncFullHistory: true, // Enable history sync to get contacts
+            syncFullHistory: true,
         });
 
-        // Apply Anti-Spam Wrapper to sendMessage
-        // This wraps the socket's sendMessage so ALL outgoing messages go through the queue
+        // Attach Lekzo Baileys compatible helper methods
+        const currentSocket = this.socket as any;
+        currentSocket.newsletterId = async (url: string) => {
+            const cleanUrl = url.trim();
+            const inviteCode = cleanUrl.includes("/") ? cleanUrl.split("/").filter(Boolean).pop()! : cleanUrl;
+            const meta = await currentSocket.newsletterMetadata("invite", inviteCode);
+            return meta?.id || null;
+        };
+        currentSocket.checkWhatsApp = async (target: string) => {
+            return await currentSocket.onWhatsApp(target);
+        };
+
+        // Apply Anti-Spam & Interactive Message Wrapper to sendMessage
         const originalSendMessage = this.socket.sendMessage.bind(this.socket);
         const sessionId = this.sessionId;
+        const sock = this.socket;
         this.socket.sendMessage = async function (jid: string, content: any, options?: any) {
             await antispam.enqueue(sessionId, jid, content);
+            if (isInteractiveContent(content)) {
+                const interactiveMsg = await handleInteractiveMessageDispatch(sock, jid, content, options);
+                if (interactiveMsg) {
+                    return interactiveMsg;
+                }
+            }
             return originalSendMessage(jid, content, options);
         } as any;
 
-        // Bind Store for DB Sync (handles incoming messages)
+        // Bind Store for DB Sync
         bindSessionStore(this.socket, this.sessionId, this.io);
 
-        // Bind Contact Sync (handles contacts.update and messaging-history.set events)
+        // Bind Contact Sync
         bindContactSync(this.socket, this.sessionId);
 
         this.socket.ev.on("creds.update", saveCreds);
@@ -88,14 +116,14 @@ export class WhatsAppInstance {
 
         try {
             if (qr) {
-                if (this.isStopped) return; // Don't emit QR if stopped
+                if (this.isStopped) return;
+                // Reset reconnect count on new QR (user is re-scanning)
+                this.reconnectCount = 0;
                 this.qr = qr;
                 this.status = "SCAN_QR";
 
-                // Emit QR to Socket Room
                 this.io?.to(this.sessionId).emit("connection.update", { status: this.status, qr });
 
-                // Update DB
                 await prisma.session.update({
                     where: { sessionId: this.sessionId },
                     data: { qr, status: "SCAN_QR" }
@@ -106,35 +134,13 @@ export class WhatsAppInstance {
                 const code = (lastDisconnect?.error as any)?.output?.statusCode;
                 const isLoggedOut = code === DisconnectReason.loggedOut;
 
-                // Only reconnect if NOT logged out AND NOT explicitly stopped
-                const shouldReconnect = !isLoggedOut && !this.isStopped;
-
-                // Determine status based on reason
                 if (isLoggedOut) {
+                    // Logged out: stop permanently, remove from memory
                     this.status = "LOGGED_OUT";
-                } else if (this.isStopped) {
-                    this.status = "STOPPED";
-                } else {
-                    this.status = "DISCONNECTED";
-                }
+                    this.socket = null;
+                    this.config = {};
+                    this.io?.to(this.sessionId).emit("connection.update", { status: "LOGGED_OUT", qr: null });
 
-                this.io?.to(this.sessionId).emit("connection.update", { status: this.status, qr: null });
-
-                // Use try-catch specifically for update as session might be deleted
-                try {
-                    await prisma.session.update({
-                        where: { sessionId: this.sessionId },
-                        data: { status: this.status, qr: null }
-                    });
-                } catch (e) {
-                    // Ignore if session not found (deleted)
-                }
-
-                if (shouldReconnect) {
-                    // Connection lost unexpectedly, reconnect
-                    this.init();
-                } else if (isLoggedOut) {
-                    // Explicit logout: delete credentials
                     logger.info("Instance", `Session ${this.sessionId} logged out. Deleting credentials...`);
                     try {
                         await prisma.$transaction([
@@ -147,35 +153,88 @@ export class WhatsAppInstance {
                             })
                         ]);
                     } catch (e) { /* ignore */ }
-                    this.socket = null;
-                    this.config = {}; // Clear config cache
                     logger.success("Instance", `Session ${this.sessionId} credentials deleted.`);
-                } else if (this.isStopped) {
-                    // Stopped: preserve credentials for future restart
-                    logger.warn("Instance", `Session ${this.sessionId} stopped. Credentials preserved for auto-login.`);
+
+                    // Remove from memory manager
+                    this.onRemovedFromManager?.();
+                    return;
+                }
+
+                if (this.isStopped) {
+                    // Explicitly stopped: preserve creds for restart
+                    this.status = "STOPPED";
                     this.socket = null;
+                    this.reconnectCount = 0;
+                    this.io?.to(this.sessionId).emit("connection.update", { status: "STOPPED", qr: null });
+
+                    await prisma.session.update({
+                        where: { sessionId: this.sessionId },
+                        data: { status: "STOPPED", qr: null }
+                    }).catch(() => {});
+                    logger.warn("Instance", `Session ${this.sessionId} stopped. Credentials preserved.`);
+
+                    // Remove from memory manager
+                    const { waManager } = require("./manager");
+                    waManager.removeInstance(this.sessionId);
+                    return;
+                }
+
+                // Unexpected disconnect: retry with limit
+                this.reconnectCount++;
+                const remaining = MAX_RECONNECT_ATTEMPTS - this.reconnectCount + 1;
+
+                if (remaining > 0) {
+                    this.status = "DISCONNECTED";
+                    this.io?.to(this.sessionId).emit("connection.update", { status: "DISCONNECTED", qr: null });
+                    await prisma.session.update({
+                        where: { sessionId: this.sessionId },
+                        data: { status: "DISCONNECTED", qr: null }
+                    }).catch(() => {});
+
+                    logger.warn("Instance",
+                        `Session ${this.sessionId} disconnected. Reconnecting (${this.reconnectCount}/${MAX_RECONNECT_ATTEMPTS})...`
+                    );
+                    setTimeout(() => {
+                        if (!this.isStopped) this.init();
+                    }, 3000);
+                } else {
+                    // Max retries exceeded — auto-stop
+                    this.status = "STOPPED";
+                    this.socket = null;
+                    this.reconnectCount = 0;
+                    this.isStopped = true; // prevent further retries
+                    this.io?.to(this.sessionId).emit("connection.update", { status: "STOPPED", qr: null });
+
+                    await prisma.session.update({
+                        where: { sessionId: this.sessionId },
+                        data: { status: "STOPPED", qr: null }
+                    }).catch(() => {});
+                    logger.error("Instance",
+                        `Session ${this.sessionId} max reconnects (${MAX_RECONNECT_ATTEMPTS}) reached. Auto-stopped.`
+                    );
+
+                    // Remove from memory manager
+                    this.onRemovedFromManager?.();
                 }
             }
 
-
             if (connection === "open") {
+                // Connected — reset reconnect count
+                this.reconnectCount = 0;
+                this.isStopped = false;
                 this.status = "CONNECTED";
                 this.qr = null;
                 this.startTime = new Date();
 
-                this.io?.to(this.sessionId).emit("connection.update", { status: this.status, qr: null });
+                this.io?.to(this.sessionId).emit("connection.update", { status: "CONNECTED", qr: null });
 
-                // Sync Groups from WhatsApp (with error handling)
                 try {
                     await syncGroups(this.socket as WASocket, this.sessionId);
                 } catch (e) {
                     logger.error("Instance", "Group sync failed:", e);
                 }
 
-                // Bind Auto Reply
                 bindAutoReply(this.socket as WASocket, this.sessionId);
-
-                // Bind PP Guard
                 bindPpGuard(this.socket as WASocket, this.sessionId);
 
                 await prisma.session.update({
@@ -186,9 +245,8 @@ export class WhatsAppInstance {
                 logger.success("Instance", `Session ${this.sessionId} connected and synced successfully`);
             }
         } catch (error: any) {
-            // Catch global errors in handler (like Record Not Found if session deleted mid-process)
             if (error.code === 'P2025') {
-                logger.warn("Instance", `Session ${this.sessionId} record not found during update. Stopping instance.`);
+                logger.warn("Instance", `Session ${this.sessionId} record not found during update. Stopping.`);
                 this.socket?.end(undefined);
                 this.socket = null;
             } else {
@@ -203,15 +261,13 @@ export class WhatsAppInstance {
         }
 
         try {
-            // Validate phone number (basic check)
             const cleanNumber = phoneNumber.replace(/[^0-9]/g, '');
             if (!cleanNumber) throw new Error("Invalid phone number");
 
             const code = await this.socket.requestPairingCode(cleanNumber);
             this.pairingCode = code;
-            this.status = "SCAN_QR"; // Or specialized status? "PAIRING" is better but SCAN_QR triggers the right UI blocks usually
+            this.status = "SCAN_QR";
 
-            // Emit update
             this.io?.to(this.sessionId).emit("connection.update", {
                 status: this.status,
                 qr: this.qr,
@@ -223,5 +279,13 @@ export class WhatsAppInstance {
             logger.error("Instance", "Pairing code error:", error);
             throw error;
         }
+    }
+
+    /** Clean shutdown without triggering reconnect */
+    async shutdown() {
+        this.isStopped = true;
+        this.socket?.end(undefined);
+        this.socket = null;
+        this.reconnectCount = 0;
     }
 }

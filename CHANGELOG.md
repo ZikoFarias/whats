@@ -1,3 +1,224 @@
+## [v1.7.0-beta.1] - 2026-09-21
+
+### Added
+- **Pure Baileys v7 Core**: Upgraded WhatsApp engine to pure `@whiskeysockets/baileys@7.0.0-rc14` completely removing all `patch-package` dependencies for clean open-source distribution.
+- **Native Flow Interactive Messages**: Full support for sending and receiving modern WhatsApp interactive messages (Native Flow buttons):
+  - `quick_reply`: Interactive quick action buttons.
+  - `cta_url`: Direct external web links.
+  - `cta_call`: Direct telephone call actions.
+  - `cta_copy`: One-click copy code / voucher tokens.
+  - `single_select`: Dynamic list menu with sections and rows.
+- **Interactive Message Tester Dashboard**: Dedicated UI at `/dashboard/interactive` featuring 1-click test triggers and custom JSON/form builders.
+- **Chat Window Interactive Dialog**: Integrated interactive message builder dialog (`✨`) into `/dashboard/chat` window.
+- **Interactive REST Endpoint**: Added `POST /api/messages/[sessionId]/[jid]/interactive` with complete validation and OpenAPI/Swagger documentation.
+- **Binary Stanza Injection**: Injected WhatsApp `<biz>` and `<bot>` binary nodes via `additionalNodes` at protocol level for native button rendering across WhatsApp Web, Android, and iOS.
+
+### Changed
+- **User Role Architecture (`OWNER` → `USER`)**: Migrated user RBAC hierarchy to `SUPERADMIN` > `STAFF` > `USER` (default least privilege: `USER`). All Prisma schemas, Zod validators, API routes, and dashboard pages updated accordingly.
+- **Automated Database Migrations on Startup**: Embedded runtime auto-migration in `src/server/index.ts` and `scripts/migrate.js` to automatically convert legacy database enum values and records without manual SQL execution.
+- **Telemetry Privacy Hardening**: Replaced private instance deployment hostname/URL in monitoring heartbeat with official WA-AKG application version (`v1.7.0-beta.1`) and added `ENABLE_TELEMETRY` opt-out support.
+- **Pure Interactive Payload**: Removed legacy `viewOnceMessage` wrapping in favor of pure `interactiveMessage` stanzas to ensure button visibility on modern WhatsApp clients.
+- **Real-Time Store Sync**: Interactive messages sent via `relayMessage` are now automatically stored in SQLite database and emitted via Socket.IO to the web dashboard.
+- **Dev Server Stability**: Added Webpack fallback in `src/server/index.ts` to eliminate Turbopack NTFS colon chunk naming panic (`os error 22`) in dev mode.
+
+### Security
+- **Comprehensive Vulnerability Remediation**: Remediated 13 security review findings from external evaluation:
+  - **Socket.IO Hardening**: Added JWT & API key authentication middleware (`io.use`), session authorization checks, and restricted CORS origins.
+  - **SSRF & LFI Mitigation**: Implemented strict safe fetching (`safeFetchBuffer`) with private IP/cloud-metadata blocking (`validateSafeUrl`) for media downloads, webhooks, chat, and scheduler.
+  - **Auth & Secrets Protection**: Encrypted WhatsApp `AuthState` session keys at rest with AES-256-GCM, changed default role to `USER`, disabled public registration by default, and migrated API key generation to CSPRNG.
+  - **Swagger & API Security**: Eliminated client-side credentials from Swagger UI, enforced session checks, and strengthened defense-in-depth API key validation in proxy middleware.
+  - **Media & Container Hardening**: Sanitized mimetype file extensions to prevent path traversal, enforced session prefix ownership, and migrated Docker runner to non-root user `node`.
+
+### Fixed
+- **Dev Server Startup Stability**: Decoupled NextAuth evaluation from Socket.IO and session access queries to eliminate Next.js 16 `Invariant: AsyncLocalStorage accessed in runtime where it is not available` crash on server startup.
+
+## [v1.6.4] - 2026-07-12
+
+### Added
+- **Direct Chat URL** (#85): Added `/dashboard/chat/[jid]` route to open a chat directly by phone number. URL path syncs when selecting chat from list.
+
+### Changed
+- **Webhook Log Optimization**: Removed `raw: message` from webhook payload to reduce storage. Truncated `responseBody` to max 1KB. Added auto-cleanup that deletes logs older than 30 days and caps at 500 logs per webhook.
+
+### Fixed
+- **Reply Input Focus** (#84): Reply text box now automatically gains focus when clicking the reply arrow or using context menu reply.
+
+## [v1.6.3] - 2026-06-30
+
+### Added
+- **Automated Deployment**: Added `start.sh` deployment script that features PM2 startup configuration, early port conflict checks, existing admin verification, and end-of-script security warnings for default `.env` credentials.
+- **Recurring Schedules**: The Scheduler now supports recurring messages with interval options: Every X Minutes, Every X Hours, Specific Days of Week, or Custom Cron Expressions.
+- **Scheduler JID Types**: Added a radio selector on the Scheduler UI to quickly target Personal chats, WhatsApp Groups, or Newsletters (Channels) without manually typing domain suffixes (`@s.whatsapp.net`, `@g.us`, `@newsletter`).
+- **Media-only Auto Replies & Schedules**: Both Auto Reply and Scheduler features now allow sending messages containing only media (images, videos, documents) without requiring text content.
+
+### Changed
+- **UI Redesign**: Modernized the Session List table and redesigned application Error Pages for a cleaner and more professional user experience.
+- **Scheduler UX Redesign**: The "Send At" form fields are now dynamically hidden or adjusted based on the selected schedule type (One-time vs. Recurring vs. Specific Days) for a cleaner and more intuitive experience.
+- **Environment & PM2 Config**: Removed hardcoded `PORT` from `ecosystem.config.js` to strictly prioritize `.env` configs, and reorganized `.env.example`.
+- **License**: Switched the project license to standard MIT.
+- **Documentation**: Updated Swagger specs, `API_DOCUMENTATION.md`, and `UPDATE_GUIDE.md` to document the new `start.sh` workflow, session API responses, and the new schedule properties.
+
+### Fixed
+- **API Validation Error**: Fixed a backend validation bug that rejected POST/PUT requests to the Scheduler API with `400 Bad Request` if the text content was empty despite a media URL being provided.
+- **Environment Loading**: Fixed a bug where environment variables were not loaded correctly in development mode.
+- **React Hydration**: Resolved hydration mismatch bugs and TypeScript inference errors in error pages.
+
+## [v1.6.2] - 2026-06-28
+
+### Added
+- **Webhook Logs & Test**: Added dedicated endpoints and popup dialog to test and view realtime webhook delivery logs with auto-refresh and load more pagination (#67).
+- **Webhook Receiver Field**: Added explicit `receiver` field to `message.received` and `onMessageReceived` webhooks (#58).
+- **GitHub Templates**: Added issue templates, PR template, `SECURITY.md`, `CODEOWNERS`, and `FUNDING.yml`.
+
+### Changed
+- **Chat Transitions**: Implemented seamless chat switching by keeping the UI mounted during message loading to prevent layout flickering.
+- **Webhook Logs UI**: Redesigned to master-detail split layout, improved JSON payload viewing area, and resolved UI overflow/scrolling issues.
+- **Docker Multi-stage Build**: Refactored `Dockerfile` for multi-stage build, adding `.dockerignore`, cleaning cache, and pruning dev dependencies.
+- **Node Version**: Bumped Node version from 20-alpine to 26-alpine (#63, #64, #62).
+- **React 19 Compat**: Added `--legacy-peer-deps` to Dockerfile `npm ci` for swagger-ui-react compatibility.
+- **Docs UI**: Restyled code blocks on `/docs` page to clean minimalist (Stripe style).
+- **Swagger Updates**: Bumped swagger to v1.6.1 and added complete webhook payload examples.
+- **CI Workflows**: Cleaned up CI workflows, keeping only templates and dependabot.
+
+### Fixed
+- **Browser Tab Title**: Made metadata tab title dynamically follow the Application Name defined in system settings (#71).
+- **Chat Auto-Focus**: Fixed chat input not automatically gaining focus on chat switch by resolving loading unmount conflict (#70).
+- **Webhook Logs Issues**: Fixed dynamic system timezone configuration, stale closure polling bug, and constrained modal height.
+- **Auth & Security**: Applied critical auth fixes and proper session resolution in test & logs endpoints.
+- **Docs UI Bug**: Fixed code blocks being invisible on `/docs` page.
+- **JID Suffix**: Stripped device suffix (`:47`) from own JID in webhook receiver/from.
+- **Superadmin Webhooks**: Fixed webhooks created by superadmins not being triggered or displayed for session owners. Session owners can now also fully manage (edit, toggle, test, view logs, delete) webhooks created by superadmins on their sessions.
+
+## [v1.6.1] - 2026-06-27
+
+### Fixed
+- **Webhook not fired for sent messages (#57)**: Explicit webhook dispatch added after `sendMessage()` in both `ChatService.sendTextMessage()` and `ChatService.sendMediaMessage()`. Also added to all API message routes (contact, location, poll, reply, sticker). No longer relies on fragile Baileys `messages.upsert` event.
+- **Receiver info in webhook payload (#58)**: Added explicit `receiver` field to `message.sent` webhook for clarity.
+- **Webhook empty key fields**: Fixed Baileys `WAMessage` vs `MessageKey` type mismatch — now correctly extracts `MessageKey` from returned `WAMessage` before passing to webhook.
+
+### Changed
+- **Swagger version**: Updated from v1.3.0 to v1.6.1, endpoint count corrected to 91.
+- **Docs**: Added 15 webhook payload examples to `API_DOCUMENTATION.md` covering all event types (message.received, message.sent, message.status, message.deleted, message.edited, connection.update, group.update, group.participant, contact.update, status.update).
+
+## [v1.6.0] - 2026-06-23
+
+### Added
+- **Inbox Page** (`/dashboard/inbox`): Dedicated user notifications reader with filters (All/Unread/Read), mark as read, delete, and click-to-action navigation.
+- **Reply System**: Chat messages can now be replied to — reply bar shows preview of original message, quoted reply sent via Baileys `contextInfo`.
+- **Right-Click Context Menu**: On message bubbles — Reply, Copy, Delete, and Info actions. On chat list items — Open Chat and Copy JID.
+- **Label Badges in Chat List**: Colored dots displayed next to chat names showing assigned labels, always visible without hover.
+- **Label Assignment from Chat List**: Hover label button on each chat row opens popover to toggle label assignments inline.
+- **Label API by JID**: `GET /api/labels/[sessionId]/chats?jid=` endpoint to fetch labels assigned to a specific chat.
+- **Keyboard Shortcuts**: In Chat Window — `Esc` to cancel reply, `?` to show shortcuts help.
+- **Broadcast History Persistence**: Broadcast logs saved to DB with `BroadcastLog` and `BroadcastRecipient` tables. History tab with detail modal per broadcast.
+- **SEO Optimization**: Full metadata (OG, Twitter, keywords, canonical), conditional `robots.ts`/`sitemap.ts` based on `NEXT_PUBLIC_ALLOW_INDEXING` env, JSON-LD-ready.
+- **Notifications API `?jid=` support**: Fetch labels assigned to a specific chat JID.
+- **Configurable Pagination Size**: `NEXT_PUBLIC_CHAT_PAGE_SIZE` env variable controls chats loaded per page (default 50).
+
+### Changed
+- **RAM Optimization — Session Reconnect Limit**: Max 3 reconnect attempts per session. After exceeding, session auto-stops and removes itself from memory manager.
+- **Session Default STOPPED**: Newly created sessions no longer auto-init socket. Status set to `STOPPED`; user must click Start to connect.
+- **Load Sessions Skip Idle**: `loadSessions()` skips restoring sessions without auth credentials (never connected before).
+- **Memory Cleanup**: Instances removed from manager Map on LOGGED_OUT, STOPPED, or max-reconnect failure. No orphan instances in memory.
+- **Anti-Delete Fix**: Session config `antiDelete` now correctly preserves original message content instead of always replacing with deleted marker.
+- **Performance — Docs Page**: Replaced heavy `react-syntax-highlighter` (200KB+ bundle) with lightweight `<pre>` blocks + copy button.
+- **Performance — Chat List Cursor Pagination**: Replaced OFFSET with cursor-based (`m1.timestamp < ?`). OFFSET broke with real-time updates. SQL now has proper `LIMIT ?` — no more fetching all messages.
+- **Performance — Label Fetch N+1**: Chat list label dots now use 1 batch API call instead of N separate calls.
+- **UI — Reply Button Position**: Own messages: reply button on left. Others' messages: reply button on right.
+- **UI — English Only**: All remaining Indonesian strings translated to English across broadcast, labels, and bot-settings pages.
+- **Chat Service**: `getChatsList` param `offset` → `before` (cursor string). Contacts/groups lookup limited to JIDs in result set.
+- **Batch Label API**: `GET /api/labels/[sessionId]/chats` without params returns all assignments in 1 query.
+- **Api Docs**: Endpoint count bumped from 64 to 68, new broadcast history endpoints documented.
+
+### Fixed
+- **Session Settings 405 Error**: Frontend was sending POST to a PATCH-only route; fixed method mismatch.
+- **Label "No chats assigned" Bug**: Wrong API endpoint `/list/{id}` → fixed to `/chats?labelId={id}`.
+- **Reply Bar Overflow**: Long replied messages no longer push the close (X) button out of view — added `overflow-hidden` and `w-full truncate`.
+- **Notification Truncation**: Removed `line-clamp-2` from notification messages — full text now visible in inbox and popover.
+- **Native `confirm()` Replaced**: Native browser confirm in ChatWindow delete replaced with shadcn `AlertDialog`.
+- **Duplicate `canAccess` Declaration**: Fixed TypeScript build error in labels chats route.
+- **Table Overflow on Mobile**: Changed `whitespace-nowrap` to `whitespace-normal` for responsive table cells.
+- **Settings Route Mismatch**: Frontend `POST` → `PATCH` for bot settings save.
+- **Chat List CPU Spike**: SQL query had no `LIMIT` — added directly with cursor pagination.
+- **Build Error**: Restored needed `normalizeJid` import in chat service.
+- **Favicon Disappeared**: Removed non-existent icon paths — Next.js auto-generates again.
+- **Chat List Scroll Render & Glitch**: Fixed list items shuffling or displaying wrong/swapped contact names on scroll by supplying stable `key={chat.jid}` to item renderers.
+- **Infinite Scroll Concurrency**: Added a `fetchingRef` lock during pagination to prevent duplicate parallel fetches and race conditions.
+- **Search Debouncing**: Separated search text input from the query state to ensure the debouncing delay is properly respected before database querying.
+- **Reply Message System**: Fixed missing message reply storage by extracting and storing `quoteId` from incoming and outgoing messages. Fixed recipient JID string parsing to prevent corrupted double domain serialization, enabling messages to be correctly received as replies.
+- **Reply Scroll & Highlight**: Added a visual quote preview block inside message bubbles and interactive scroll-to-quote with highlight transition animation on click.
+
+### Performance
+- **Bundle Size**: Removed `react-syntax-highlighter` dependency — docs page loads significantly faster.
+- **Session Memory**: Idle/disconnected sessions no longer hold socket instances in RAM.
+- **Log Spam**: Infinite reconnect loop stopped — no more log flooding from disconnected sessions.
+
+### Database
+- **New Models**: `BroadcastLog`, `BroadcastRecipient` — persistent broadcast history with cascade delete.
+- **Index**: Added `@@index([sessionId, remoteJid, timestamp])` on Message table for GROUP BY query performance.
+
+---
+
+### Added
+- **Inbox Page** (`/dashboard/inbox`): Dedicated user notifications reader with filters (All/Unread/Read), mark as read, delete, and click-to-action navigation.
+- **Reply System**: Chat messages can now be replied to — reply bar shows preview of original message, quoted reply sent via Baileys `contextInfo`.
+- **Right-Click Context Menu**: On message bubbles — Reply, Copy, Delete, and Info actions. On chat list items — Open Chat and Copy JID.
+- **Label Badges in Chat List**: Colored dots displayed next to chat names showing assigned labels, always visible without hover.
+- **Label Assignment from Chat List**: Hover label button on each chat row opens popover to toggle label assignments inline.
+- **Label API by JID**: `GET /api/labels/[sessionId]/chats?jid=` endpoint to fetch labels assigned to a specific chat.
+- **Keyboard Shortcuts**: In Chat Window — `Esc` to cancel reply, `?` to show shortcuts help.
+- **Broadcast History Persistence**: Broadcast logs saved to DB with `BroadcastLog` and `BroadcastRecipient` tables. History tab with detail modal per broadcast.
+- **SEO Optimization**: Full metadata (OG, Twitter, keywords, canonical), conditional `robots.ts`/`sitemap.ts` based on `NEXT_PUBLIC_ALLOW_INDEXING` env, JSON-LD-ready.
+- **Notifications API `?jid=` support**: Fetch labels assigned to a specific chat JID.
+
+### Changed
+- **RAM Optimization — Session Reconnect Limit**: Max 3 reconnect attempts per session. After exceeding, session auto-stops and removes itself from memory manager.
+- **Session Default STOPPED**: Newly created sessions no longer auto-init socket. Status set to `STOPPED`; user must click Start to connect.
+- **Load Sessions Skip Idle**: `loadSessions()` skips restoring sessions without auth credentials (never connected before).
+- **Memory Cleanup**: Instances removed from manager Map on LOGGED_OUT, STOPPED, or max-reconnect failure. No orphan instances in memory.
+- **Anti-Delete Fix**: Session config `antiDelete` now correctly preserves original message content instead of always replacing with deleted marker.
+- **Performance — Docs Page**: Replaced heavy `react-syntax-highlighter` (200KB+ bundle) with lightweight `<pre>` blocks + copy button.
+- **Performance — Chat List**: Virtuoso virtual scrolling, lazy media loading, IntersectionObserver for images/videos.
+- **UI — Reply Button Position**: Own messages: reply button on left. Others' messages: reply button on right.
+- **UI — English Only**: All remaining Indonesian strings translated to English across broadcast, labels, and bot-settings pages.
+- **Api Docs**: Endpoint count bumped from 64 to 68, new broadcast history endpoints documented.
+- **Unread Dot Style**: Notification indicator now uses proper `h-2 w-2` with `ring` for modern badge look.
+
+### Fixed
+- **Session Settings 405 Error**: Frontend was sending POST to a PATCH-only route; fixed method mismatch.
+- **Label "No chats assigned" Bug**: Wrong API endpoint `/list/{id}` → fixed to `/chats?labelId={id}`.
+- **Reply Bar Overflow**: Long replied messages no longer push the close (X) button out of view — added `overflow-hidden` and `w-full truncate`.
+- **Notification Truncation**: Removed `line-clamp-2` from notification messages — full text now visible in inbox and popover.
+- **Native `confirm()` Replaced**: Native browser confirm in ChatWindow delete replaced with shadcn `AlertDialog`.
+- **Duplicate `canAccess` Declaration**: Fixed TypeScript build error in labels chats route.
+- **Table Overflow on Mobile**: Changed `whitespace-nowrap` to `whitespace-normal` for responsive table cells.
+- **Settings Route Mismatch**: Frontend `POST` → `PATCH` for bot settings save.
+
+### Performance
+- **Bundle Size**: Removed `react-syntax-highlighter` dependency — docs page loads significantly faster.
+- **Session Memory**: Idle/disconnected sessions no longer hold socket instances in RAM.
+- **Log Spam**: Infinite reconnect loop stopped — no more log flooding from disconnected sessions.
+
+### Database
+- **New Models**: `BroadcastLog`, `BroadcastRecipient` — persistent broadcast history with cascade delete.
+- **Index**: Added `@@index([sessionId, remoteJid, timestamp])` on Message table for GROUP BY query performance.
+
+---
+
+## [v1.5.5] - 2026-06-03
+
+### Added
+- **Message Editing**: Introduced a new endpoint `PATCH /api/messages/[sessionId]/[jid]/[messageId]` to edit sent text messages.
+
+### Changed
+- **Cleaned Deprecated Endpoints**: Removed over 45 deprecated legacy endpoints from the codebase. Regenerated the Swagger specification and `API_DOCUMENTATION.md` so that it accurately reflects the 81 active routes.
+
+### Fixed
+- **Webhook Management**: Fixed a bug where webhooks could not be edited or deleted. The backend now robustly queries sessions using both internal CUIDs and external string identifiers to resolve lookups.
+- **Timezone Settings Alignment**: Fixed an issue where the Timezone configuration set in the WebApp settings was not visually respected by the Scheduler list or Navbar Real-time Clock (which previously fell back to the browser's local timezone). Both now strictly adhere to the system-configured timezone.
+
+---
+
 ## [v1.5.4] - 2026-05-21
 
 ### Added
@@ -265,10 +486,6 @@
 ## [v1.5.1] - 2026-03-03
 
 ### Added
-- **WA-AKG API Heartbeat Monitoring**: 
-    - Full transition to a dual-app architecture with a standalone `wa-akg-api` monitoring system.
-    - Automated background heartbeat system in the main app to detect active server instances.
-    - Persistent MySQL/MariaDB storage for monitoring data with premium dark-mode dashboard.
 - **Global System Resource Monitoring**:
     - Centralized "System Monitor" dashboard for Superadmins to track CPU (Live & Per-core), RAM, Disk, and Network health.
     - Detailed process-level memory tracking (Heap/RSS) for the Node.js application.

@@ -1,7 +1,7 @@
 # 🏗️ WA-AKG Project Architecture & Logic
 
-> **Version**: 1.5.3  
-> **Last Updated**: May 2026  
+> **Version**: 1.6.1  
+> **Last Updated**: June 2026  
 > **Tech Stack**: Next.js 16 (App Router), TypeScript, Prisma, MySQL/PostgreSQL, Baileys, Tailwind CSS.
 
 ---
@@ -104,9 +104,12 @@ Every incoming message follows this path:
 
 ## 🚀 Environment & Deployment
 
-Configuration is centralized in `.env`. The project natively supports standard bare-metal builds (`npm run build`) and Docker containerized deployment (`web/docker-compose.yml`) which coordinates:
+Configuration is centralized in `.env`. The project natively supports standard bare-metal builds (`npm run build`) and Docker containerized deployment (`docker-compose.yml`) which coordinates:
 1. A MySQL 8.0 instance with persistent volume storage for schema data.
 2. Next.js gateway web container running on custom tsx server with automated startup database synchronization (`npx prisma db push`).
+
+> [!CAUTION]
+> Docker Compose sekarang membaca kredensial dari `.env` file. Jangan gunakan nilai default untuk `AUTH_SECRET`, `MYSQL_ROOT_PASSWORD`, `ADMIN_PASSWORD`, atau `NEXT_PUBLIC_SWAGGER_PASSWORD` di production. Jalankan `cp .env.example .env` dan edit sebelum `docker compose up`.
 
 > [!IMPORTANT]
 > Always run `npm run db:push` after updates on bare-metal, or use Docker Compose which executes this step automatically on container startup.

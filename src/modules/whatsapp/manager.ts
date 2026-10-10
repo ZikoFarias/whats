@@ -27,29 +27,47 @@ export class WhatsAppManager {
     async loadSessions() {
         if (!this.io) throw new Error("Socket.IO not initialized in WhatsAppManager");
         const sessions = await prisma.session.findMany({
-            where: { status: { not: "LOGGED_OUT" } }
+            where: {
+                status: { not: "LOGGED_OUT" }
+            },
+            select: { sessionId: true, userId: true, status: true }
         });
 
+        let started = 0;
         for (const session of sessions) {
+            // Only auto-init sessions that were CONNECTED before (have auth creds)
+            const authCount = await prisma.authState.count({
+                where: { sessionId: session.sessionId }
+            });
+            if (authCount === 0) {
+                // No credentials — session was created but never connected
+                // Set to STOPPED so it doesn't spam reconnect
+                await prisma.session.update({
+                    where: { sessionId: session.sessionId },
+                    data: { status: "STOPPED" }
+                }).catch(() => {});
+                continue;
+            }
+
             const instance = new WhatsAppInstance(session.sessionId, session.userId, this.io);
+            instance.onRemovedFromManager = () => this.removeInstance(session.sessionId);
             this.sessions.set(session.sessionId, instance);
             await instance.init();
+            started++;
         }
-        logger.success("Manager", `Loaded ${sessions.length} sessions.`);
+        logger.success("Manager", `Loaded ${started} sessions (${sessions.length - started} idle skipped).`);
     }
 
     async createSession(userId: string, name: string, customSessionId?: string) {
-        // Fallback to global IO if instance IO is missing (Next.js Context Issue)
         if (!this.io && (global as any).io) {
             this.io = (global as any).io;
         }
 
         if (!this.io) {
-            logger.error("Manager", "Socket.IO not initialized in WhatsAppManager, and global fallback failed.");
+            logger.error("Manager", "Socket.IO not initialized in WhatsAppManager");
             throw new Error("Socket.IO not initialized");
         }
 
-        // Use custom ID if provided, otherwise generate random
         const sessionId = customSessionId || Math.random().toString(36).substring(7);
 
         const session = await prisma.session.create({
@@ -57,7 +75,7 @@ export class WhatsAppManager {
                 userId,
                 name,
                 sessionId,
-                status: "DISCONNECTED",
+                status: "STOPPED", // Default: stopped, user must click Start
                 botConfig: {
                     create: {
                         enabled: true,
@@ -68,10 +86,8 @@ export class WhatsAppManager {
             }
         });
 
-        const instance = new WhatsAppInstance(sessionId, userId, this.io);
-        this.sessions.set(sessionId, instance);
-        await instance.init();
-
+        // Don't init socket — user clicks Start manually
+        logger.info("Manager", `Session ${sessionId} created (STOPPED). User must click Start to connect.`);
         return session;
     }
 
@@ -79,11 +95,19 @@ export class WhatsAppManager {
         return this.sessions.get(sessionId);
     }
 
+    /** Remove instance from memory manager (cleanup after stop/logout) */
+    public removeInstance(sessionId: string) {
+        const inst = this.sessions.get(sessionId);
+        if (inst) {
+            logger.info("Manager", `Removing session ${sessionId} from memory.`);
+            this.sessions.delete(sessionId);
+        }
+    }
+
     async deleteSession(sessionId: string) {
         const instance = this.sessions.get(sessionId);
         if (instance) {
-            // Logout/Close socket
-            instance.socket?.end(undefined);
+            await instance.shutdown();
             this.sessions.delete(sessionId);
         }
         await prisma.session.delete({ where: { sessionId } });
@@ -92,14 +116,15 @@ export class WhatsAppManager {
     async stopSession(sessionId: string) {
         const instance = this.sessions.get(sessionId);
         if (instance) {
-            instance.isStopped = true; // Prevent auto-reconnect
-            instance.socket?.end(undefined);
+            await instance.shutdown();
             instance.status = "STOPPED";
             this.io?.to(sessionId).emit("connection.update", { status: "STOPPED", qr: null });
             await prisma.session.update({
                 where: { sessionId },
                 data: { status: "STOPPED" }
-            });
+            }).catch(() => {});
+            // Remove from memory immediately
+            this.sessions.delete(sessionId);
         }
     }
 
@@ -113,11 +138,15 @@ export class WhatsAppManager {
         const session = await prisma.session.findUnique({ where: { sessionId } });
         if (!session) throw new Error("Session not found");
 
-        // Re-initialize
+        // Create fresh instance
         let instance = this.sessions.get(sessionId);
         if (!instance) {
             instance = new WhatsAppInstance(sessionId, session.userId, this.io!);
+            instance.onRemovedFromManager = () => this.removeInstance(sessionId);
             this.sessions.set(sessionId, instance);
+        } else {
+            // Reset stopped flag for retry
+            instance.isStopped = false;
         }
 
         await instance.init();
@@ -125,7 +154,6 @@ export class WhatsAppManager {
 
     async restartSession(sessionId: string) {
         await this.stopSession(sessionId);
-        // Small delay to ensure cleanup
         await new Promise(resolve => setTimeout(resolve, 1000));
         await this.startSession(sessionId);
     }
@@ -141,5 +169,4 @@ const globalForWhatsapp = global as unknown as { waManager: WhatsAppManager };
 
 export const waManager = globalForWhatsapp.waManager || WhatsAppManager.getInstance();
 
-// Always store in global to ensure singleton across Next.js compilations/chunks
 globalForWhatsapp.waManager = waManager;

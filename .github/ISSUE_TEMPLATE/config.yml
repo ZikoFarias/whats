@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Discord / Telegram
+    url: https://t.me/aikeigroup
+    about: Ask questions or casual discussion via Telegram
+  - name: 📖 WA-AKG Documentation
+    url: https://github.com/mrifqidaffaaditya/WA-AKG/wiki
+    about: Read the docs before opening an issue

@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
 import { prisma } from "@/lib/prisma";
 
-// GET: Get chats assigned to a specific label
+// GET: Get chats assigned to a specific label OR get labels for a specific chat
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ sessionId: string }> }
@@ -11,19 +11,62 @@ export async function GET(
         const { sessionId } = await params;
         const { searchParams } = new URL(request.url);
         const labelId = searchParams.get("labelId");
+        const jid = searchParams.get("jid");
 
         const user = await getAuthenticatedUser(request);
         if (!user) {
             return NextResponse.json({ status: false, message: "Unauthorized" }, { status: 401 });
         }
 
-        if (!labelId) {
-            return NextResponse.json({ status: false, message: "labelId query param is required" }, { status: 400 });
-        }
-
         const canAccess = await canAccessSession(user.id, user.role, sessionId);
         if (!canAccess) {
             return NextResponse.json({ status: false, message: "Forbidden" }, { status: 403 });
+        }
+
+        // Mode: Get labels assigned to a specific chat JID
+        if (jid) {
+            const chatLabels = await prisma.chatLabel.findMany({
+                where: {
+                    chatJid: decodeURIComponent(jid),
+                    label: { sessionId }
+                },
+                include: {
+                    label: { select: { id: true, name: true, colorHex: true } }
+                }
+            });
+            return NextResponse.json({
+                status: true,
+                data: chatLabels.map(cl => ({
+                    id: cl.id,
+                    chatJid: cl.chatJid,
+                    labelId: cl.labelId,
+                    labelName: cl.label.name,
+                    colorHex: cl.label.colorHex
+                }))
+            });
+        }
+
+        // Mode: Get all chat-label assignments (batch for label dots)
+        if (!labelId && !jid) {
+            const chatLabels = await prisma.chatLabel.findMany({
+                where: { label: { sessionId } },
+                include: {
+                    label: { select: { colorHex: true, name: true } }
+                }
+            });
+            return NextResponse.json({
+                status: true,
+                data: chatLabels.map(cl => ({
+                    chatJid: cl.chatJid,
+                    labelId: cl.labelId,
+                    colorHex: cl.label.colorHex,
+                    labelName: cl.label.name
+                }))
+            });
+        }
+
+        if (!labelId) {
+            return NextResponse.json({ status: false, message: "labelId query param is required" }, { status: 400 });
         }
 
         // Verify label belongs to session

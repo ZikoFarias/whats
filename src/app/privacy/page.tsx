@@ -3,7 +3,17 @@ import { ArrowLeft, Lock, Shield } from "lucide-react";
 
 export const metadata = {
     title: "Privacy Policy | WA-AKG",
-    description: "Privacy Policy and Data Handling for WA-AKG.",
+    description: "Privacy Policy for WA-AKG self-hosted WhatsApp Gateway. Zero-tracking architecture, data ownership, and security practices.",
+    openGraph: {
+        title: "Privacy Policy | WA-AKG",
+        description: "Privacy Policy for WA-AKG self-hosted WhatsApp Gateway.",
+        type: "website",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Privacy Policy | WA-AKG",
+        description: "Privacy Policy for WA-AKG self-hosted WhatsApp Gateway.",
+    },
 };
 
 export default function PrivacyPage() {

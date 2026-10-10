@@ -22,8 +22,13 @@ export async function PUT(
         const body = await request.json();
         const { name, url, secret, events, isActive } = body;
 
-        const session = await prisma.session.findUnique({
-            where: { sessionId: sessionId },
+        const session = await prisma.session.findFirst({
+            where: {
+                OR: [
+                    { id: sessionId },
+                    { sessionId: sessionId }
+                ]
+            },
             select: { id: true }
         });
 
@@ -35,16 +40,23 @@ export async function PUT(
         const existing = await prisma.webhook.findFirst({
             where: {
                 id,
-                userId: user.id,
                 OR: [
                     { sessionId: session.id },
-                    { sessionId: null }
+                    { sessionId: null, userId: user.id }
                 ]
             }
         });
 
         if (!existing) {
             return NextResponse.json({ status: false, message: "Webhook not found", error: "Webhook not found" }, { status: 404 });
+        }
+
+        if (url !== undefined) {
+            const { validateSafeUrl } = await import("@/lib/security");
+            const urlValidation = await validateSafeUrl(url, { allowHttp: false });
+            if (!urlValidation.valid) {
+                return NextResponse.json({ status: false, message: `Invalid webhook URL: ${urlValidation.error}`, error: urlValidation.error }, { status: 400 });
+            }
         }
 
         const webhook = await prisma.webhook.update({
@@ -82,8 +94,13 @@ export async function DELETE(
     }
 
     try {
-        const session = await prisma.session.findUnique({
-            where: { sessionId: sessionId },
+        const session = await prisma.session.findFirst({
+            where: {
+                OR: [
+                    { id: sessionId },
+                    { sessionId: sessionId }
+                ]
+            },
             select: { id: true }
         });
 
@@ -94,10 +111,9 @@ export async function DELETE(
         const existing = await prisma.webhook.findFirst({
             where: {
                 id,
-                userId: user.id,
                 OR: [
                     { sessionId: session.id },
-                    { sessionId: null }
+                    { sessionId: null, userId: user.id }
                 ]
             }
         });

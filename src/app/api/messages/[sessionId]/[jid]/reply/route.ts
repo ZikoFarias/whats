@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { waManager } from "@/modules/whatsapp/manager";
 import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
+import { fireSentWebhook } from "@/lib/webhook";
 import { prisma } from "@/lib/prisma";
 
 /**
@@ -157,9 +158,12 @@ export async function POST(
         }
 
         // Send the reply with quoted reference
-        await instance.socket.sendMessage(jid, msgPayload, {
+        const sendResult = await instance.socket.sendMessage(jid, msgPayload, {
             quoted: quotedMsg as any
         });
+
+        // Fire webhook for sent message (non-blocking)
+        fireSentWebhook(sessionId, jid, { text: msgPayload.text || msgPayload.caption || "" }, sendResult).catch(() => {});
 
         return NextResponse.json({ status: true, message: "Message sent successfully" });
 

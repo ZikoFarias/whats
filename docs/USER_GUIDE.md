@@ -76,6 +76,16 @@ Check the **Settings** page to customize:
 - **API Keys**: Manage your secret keys for third-party integrations.
 
 ---
+
+## 🔒 Keamanan (v1.6.1)
+
+- **API Key**: Simpan API key di tempat aman. Jangan commit ke Git.
+- **Role-Based Access**: `SUPERADMIN` (full access), `STAFF` (elevated operations & assigned sessions), `USER` (standard user access).
+- **Session Sharing**: USER dan STAFF bisa mengelola session sesuai izin yang dibagikan tanpa risiko kebocoran credential.
+- **Password**: Semua password di-hash dengan bcrypt. Tidak ada fallback ke plaintext.
+- **Swagger UI**: Dilindungi oleh sesi autentikasi dashboard dan validasi API Key.
+
+---
 <div align="center">
-  **Version**: 1.5.3 | **Support**: [GitHub Issues](https://github.com/mrifqidaffaaditya/WA-AKG/issues)
+  **Version**: 1.6.1 | **Support**: [GitHub Issues](https://github.com/mrifqidaffaaditya/WA-AKG/issues)
 </div>

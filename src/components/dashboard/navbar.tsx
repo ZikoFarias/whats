@@ -165,11 +165,16 @@ export function Navbar({ appName }: NavbarProps) {
                                     {unreadCount > 0 ? `You have ${unreadCount} unread updates.` : "No new notifications."}
                                 </p>
                             </div>
-                            {unreadCount > 0 && (
-                                <Button variant="ghost" size="sm" onClick={() => markAsRead()} className="h-auto py-1 px-2 text-xs">
-                                    Mark all read
+                            <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="sm" className="h-auto py-1 px-2 text-xs" onClick={() => { router.push("/dashboard/inbox"); setIsOpen(false); }}>
+                                    See all
                                 </Button>
-                            )}
+                                {unreadCount > 0 && (
+                                    <Button variant="ghost" size="sm" onClick={() => markAsRead()} className="h-auto py-1 px-2 text-xs">
+                                        Mark all read
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto">
                             {notifications.length === 0 ? (
@@ -195,7 +200,7 @@ export function Navbar({ appName }: NavbarProps) {
                                                     <p className={`text-sm font-medium leading-none ${!n.read ? 'text-blue-700' : 'text-slate-900'}`}>
                                                         {n.title}
                                                     </p>
-                                                    <p className="text-xs text-muted-foreground line-clamp-2">
+                                                    <p className="text-xs text-muted-foreground whitespace-normal break-words">
                                                         {n.message}
                                                     </p>
                                                     <p className="text-[10px] text-slate-400">

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { waManager } from "@/modules/whatsapp/manager";
 import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
+import { fireSentWebhook } from "@/lib/webhook";
 
 // POST: Send poll message
 export async function POST(
@@ -44,13 +45,16 @@ export async function POST(
         }
 
         // Send poll message
-        await instance.socket.sendMessage(jid, {
+        const sendResult = await instance.socket.sendMessage(jid, {
             poll: {
                 name: question,
                 values: options,
                 selectableCount: count
             }
         });
+
+        // Fire webhook for sent message (non-blocking)
+        fireSentWebhook(sessionId, jid, { type: 'poll', text: question }, sendResult).catch(() => {});
 
         return NextResponse.json({ status: true, message: "Operation successful" });
 

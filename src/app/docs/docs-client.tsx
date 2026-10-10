@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
-import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
-import { Menu, X, Search, ChevronRight } from "lucide-react";
+import { Menu, Search, ChevronRight, Copy, Check } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface TocItem {
     text: string;
@@ -24,6 +23,26 @@ interface TocSection {
 interface DocsClientProps {
     content: string;
     toc: TocSection[];
+}
+
+function CopyButton({ code }: { code: string }) {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = useCallback(() => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }).catch(() => toast.error("Copy failed"));
+    }, [code]);
+    return (
+        <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+        >
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+            <span className="font-medium">{copied ? "Copied!" : "Copy"}</span>
+        </button>
+    );
 }
 
 export function DocsClient({ content, toc }: DocsClientProps) {
@@ -179,11 +198,11 @@ export function DocsClient({ content, toc }: DocsClientProps) {
             </aside>
 
             {/* Mobile Sidebar (Drawer) */}
-            <div className="lg:hidden fixed bottom-6 right-6 z-50">
+            <div className="lg:hidden fixed bottom-4 right-4 z-50">
                 <Sheet open={openMobileMenu} onOpenChange={setOpenMobileMenu}>
                     <SheetTrigger asChild>
-                        <Button size="icon" className="h-14 w-14 rounded-full shadow-lg shadow-blue-600/20 bg-blue-600 hover:bg-blue-700 text-white transition-transform hover:scale-105 active:scale-95">
-                            <Menu className="h-6 w-6" />
+                        <Button size="icon" className="h-12 w-12 sm:h-14 sm:w-14 rounded-full shadow-lg shadow-blue-600/20 bg-blue-600 hover:bg-blue-700 text-white transition-transform hover:scale-105 active:scale-95">
+                            <Menu className="h-5 w-5 sm:h-6 sm:w-6" />
                         </Button>
                     </SheetTrigger>
                     <SheetContent side="left" className="w-[85vw] sm:w-[400px] p-0 flex flex-col"> {/* Adjusted width for mobile */}
@@ -209,8 +228,8 @@ export function DocsClient({ content, toc }: DocsClientProps) {
             </div>
 
             {/* Main Content */}
-            <main className="flex-1 min-w-0 py-8 lg:pl-12">
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-r-lg">
+            <main className="flex-1 min-w-0 py-6 lg:py-8 lg:pl-12 overflow-x-hidden">
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-3 sm:p-4 mb-8 rounded-r-lg">
                     <div className="flex">
                         <div className="flex-shrink-0">
                             <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -225,7 +244,7 @@ export function DocsClient({ content, toc }: DocsClientProps) {
                     </div>
                 </div>
 
-                <article className="prose prose-slate prose-blue max-w-none prose-headings:scroll-mt-24 prose-pre:p-0 prose-pre:bg-transparent prose-pre:border-none break-words"> {/* Added break-words */}
+                <article className="prose prose-slate prose-blue max-w-none prose-headings:scroll-mt-24 break-words"> {/* Added break-words */}
                     <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
@@ -239,35 +258,31 @@ export function DocsClient({ content, toc }: DocsClientProps) {
                             },
                             code: ({ node, inline, className, children, ...props }: any) => {
                                 const match = /language-(\w+)/.exec(className || '');
+                                const codeStr = String(children).replace(/\n$/, '');
                                 return !inline && match ? (
-                                    <div className="rounded-lg overflow-hidden my-6 border border-gray-200 shadow-sm">
-                                        <div className="bg-gray-800 px-4 py-2 flex items-center justify-between">
-                                            <span className="text-xs font-mono text-gray-400 capitalize">{match[1]}</span>
+                                    <div className="rounded-xl overflow-hidden my-6 border border-gray-200 shadow-sm ring-1 ring-gray-900/5 bg-gray-950">
+                                        <div className="bg-gray-50/90 px-4 py-2.5 flex items-center justify-between border-b border-gray-200">
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{match[1]}</span>
+                                            <CopyButton code={codeStr} />
                                         </div>
-                                        <SyntaxHighlighter
-                                            style={atomOneDark}
-                                            language={match[1]}
-                                            PreTag="div"
-                                            customStyle={{ margin: 0, padding: '1rem', borderRadius: 0, fontSize: '0.9em' }}
-                                            {...props}
-                                        >
-                                            {String(children).replace(/\n$/, '')}
-                                        </SyntaxHighlighter>
+                                        <pre className="text-gray-100 text-sm leading-loose overflow-x-auto p-5 m-0 selection:bg-gray-700">
+                                            <code className="font-mono">{codeStr}</code>
+                                        </pre>
                                     </div>
                                 ) : (
-                                    <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono border border-gray-200 break-all" {...props}> {/* break-all for inline code */}
+                                    <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono border border-gray-200 break-all" {...props}>
                                         {children}
                                     </code>
                                 )
                             },
                             table: ({ node, ...props }) => (
-                                <div className="overflow-x-auto my-6 border rounded-lg shadow-sm">
-                                    <table {...props} className="min-w-full divide-y divide-gray-200" />
+                        <div className="overflow-x-auto my-6 border rounded-lg shadow-sm">
+                                    <table {...props} className="min-w-full divide-y divide-gray-200 text-sm sm:text-base" />
                                 </div>
                             ),
                             thead: ({ node, ...props }) => <thead {...props} className="bg-gray-50" />,
-                            th: ({ node, ...props }) => <th {...props} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" />,
-                            td: ({ node, ...props }) => <td {...props} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" />,
+                            th: ({ node, ...props }) => <th {...props} className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" />,
+                            td: ({ node, ...props }) => <td {...props} className="px-3 sm:px-4 py-3 text-sm text-gray-500 break-words whitespace-normal" />,
                             pre: ({ node, ...props }) => <pre {...props} /> // Passthrough to code block handler
                         }}
                     >

@@ -24,10 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const user = await prisma.user.findUnique({ where: { email } });
           if (!user) return null;
 
-          // For the test user created via API which has plain password "password123":
-          // In real app, ALWAYS use hash. 
-          // Check if password matches hash OR plaintext (for transition/testing)
-           const passwordsMatch = await bcrypt.compare(password, user.password) || password === user.password;
+          const passwordsMatch = await bcrypt.compare(password, user.password);
 
           if (passwordsMatch) {
              return user;
@@ -37,5 +34,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  secret: process.env.AUTH_SECRET || "secret",
+  secret: process.env.AUTH_SECRET,
 });

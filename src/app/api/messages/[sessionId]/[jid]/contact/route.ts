@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { waManager } from "@/modules/whatsapp/manager";
 import { getAuthenticatedUser, canAccessSession } from "@/lib/api-auth";
+import { fireSentWebhook } from "@/lib/webhook";
 
 // POST: Send contact card
 export async function POST(
@@ -46,12 +47,15 @@ export async function POST(
         const decodedJid = decodeURIComponent(jid);
 
         // Send contact message
-        await instance.socket.sendMessage(decodedJid, {
+        const sendResult = await instance.socket.sendMessage(decodedJid, {
             contacts: {
                 displayName: contacts.length > 1 ? "Contacts" : contacts[0].displayName,
                 contacts: contacts
             }
         });
+
+        // Fire webhook for sent message (non-blocking)
+        fireSentWebhook(sessionId, decodedJid, { type: 'contact', text: contacts[0]?.displayName || "" }, sendResult).catch(() => {});
 
         return NextResponse.json({ status: true, message: "Operation successful" });
 

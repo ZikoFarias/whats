@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Copy, RefreshCw, Webhook, Key, Eye, EyeOff } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Trash2, Plus, Copy, RefreshCw, Webhook, Key, Eye, EyeOff, Play, History, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
     AlertDialog,
@@ -27,7 +28,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+
 import { SessionGuard } from "@/components/dashboard/session-guard";
+import WebhookLogDialog from "@/components/dashboard/webhook-log-dialog";
 
 interface WebhookConfig {
     id: string;
@@ -37,6 +40,21 @@ interface WebhookConfig {
     sessionId?: string;
     events: string[];
     isActive: boolean;
+    createdAt: string;
+}
+
+interface WebhookLog {
+    id: string;
+    webhookId: string;
+    event: string;
+    status: string;
+    requestUrl: string;
+    requestHeaders?: any;
+    requestBody?: any;
+    responseStatusCode?: number;
+    responseBody?: string;
+    responseTimeMs?: number;
+    errorMessage?: string;
     createdAt: string;
 }
 
@@ -56,7 +74,7 @@ const AVAILABLE_EVENTS = [
 import { useSession } from "@/components/dashboard/session-provider";
 
 export default function WebhooksPage() {
-    const { sessionId, sessions } = useSession(); // Get active session ID and list of sessions
+    const { sessionId, sessions } = useSession();
     const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
     const [apiKey, setApiKey] = useState<string | null>(null);
     const [showApiKey, setShowApiKey] = useState(false);
@@ -70,26 +88,32 @@ export default function WebhooksPage() {
     const [newSecret, setNewSecret] = useState("");
     const [newEvents, setNewEvents] = useState<string[]>(["message.received", "message.sent"]);
 
+    // Testing state
+    const [testingId, setTestingId] = useState<string | null>(null);
+    const [testResults, setTestResults] = useState<Record<string, any>>({});
+
+    // Log viewer state
+    const [logDialogId, setLogDialogId] = useState<string | null>(null);
+    const [logDialogName, setLogDialogName] = useState("");
+    const [logDialogSessionId, setLogDialogSessionId] = useState("");
+
     useEffect(() => {
         if (sessions.length > 0) {
             fetchWebhooks();
         }
         fetchApiKey();
-    }, [sessionId, sessions]); // Refetch when sessionId changes or sessions are loaded
+    }, [sessionId, sessions]);
 
     const fetchWebhooks = async () => {
         setLoading(true);
         try {
-            // Fetch webhooks using the new session-scoped endpoint
             const res = await fetch(`/api/webhooks/${sessionId}`);
             if (res.ok) {
                 const responseData = await res.json();
                 const data = responseData?.data || [];
-                // Find current session to get its internal ID (CUID)
                 const currentSession = sessions.find(s => s.sessionId === sessionId);
                 const currentSessionCuid = currentSession?.id;
 
-                // Filter by active session (check both String ID and CUID)
                 const filtered = data.filter((w: WebhookConfig) =>
                     w.sessionId === sessionId ||
                     w.sessionId === currentSessionCuid ||
@@ -129,6 +153,40 @@ export default function WebhooksPage() {
         }
     };
 
+    const handleTestWebhook = async (webhook: WebhookConfig) => {
+        setTestingId(webhook.id);
+        setTestResults(prev => ({ ...prev, [webhook.id]: { testing: true } }));
+        try {
+            const targetSessionId = webhook.sessionId || sessionId;
+            const res = await fetch(`/api/webhooks/${targetSessionId}/${webhook.id}/test`, { method: "POST" });
+            const data = await res.json();
+            setTestResults(prev => ({ ...prev, [webhook.id]: data?.data || { success: false, error: "No response" } }));
+            if (data?.data?.success) {
+                toast.success("Webhook test successful!");
+            } else {
+                toast.error(`Webhook test failed: ${data?.data?.error || "Unknown error"}`);
+            }
+        } catch (error: any) {
+            setTestResults(prev => ({ ...prev, [webhook.id]: { success: false, error: error.message } }));
+            toast.error("Failed to test webhook");
+        } finally {
+            setTestingId(null);
+        }
+    };
+
+    const openLogDialog = (webhook: WebhookConfig) => {
+        const targetSessionId = webhook.sessionId || sessionId || "";
+        setLogDialogId(webhook.id);
+        setLogDialogName(webhook.name);
+        setLogDialogSessionId(targetSessionId);
+    };
+
+    const closeLogDialog = () => {
+        setLogDialogId(null);
+        setLogDialogName("");
+        setLogDialogSessionId("");
+    };
+
     // Edit state
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isEditOpen, setIsEditOpen] = useState(false);
@@ -151,29 +209,18 @@ export default function WebhooksPage() {
             toast.error("Name, URL, and at least one event are required");
             return;
         }
-
         if (!sessionId) {
             toast.error("No active session selected");
             return;
         }
-
         try {
-            const payload: any = {
-                name: newName,
-                url: newUrl,
-                events: newEvents
-            };
-
-            if (newSecret) {
-                payload.secret = newSecret;
-            }
-
+            const payload: any = { name: newName, url: newUrl, events: newEvents };
+            if (newSecret) payload.secret = newSecret;
             const res = await fetch(`/api/webhooks/${sessionId}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-
             if (res.ok) {
                 toast.success("Webhook created!");
                 setShowNewForm(false);
@@ -195,32 +242,17 @@ export default function WebhooksPage() {
             toast.error("Name, URL, and at least one event are required");
             return;
         }
-
-        if (!sessionId || !editingId) {
-            toast.error("No active session selected");
-            return;
-        }
-
+        if (!sessionId || !editingId) return;
         try {
             const webhook = webhooks.find(w => w.id === editingId);
             const targetSessionId = webhook?.sessionId || sessionId;
-
-            const payload: any = {
-                name: editName,
-                url: editUrl,
-                events: editEvents
-            };
-
-            if (editSecret) {
-                payload.secret = editSecret;
-            }
-
+            const payload: any = { name: editName, url: editUrl, events: editEvents };
+            if (editSecret) payload.secret = editSecret;
             const res = await fetch(`/api/webhooks/${targetSessionId}/${editingId}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-
             if (res.ok) {
                 toast.success("Webhook updated!");
                 setIsEditOpen(false);
@@ -236,10 +268,8 @@ export default function WebhooksPage() {
 
     const toggleWebhookActive = async (id: string, isActive: boolean) => {
         try {
-            // Find webhook to get its session ID
             const webhook = webhooks.find(w => w.id === id);
-            const targetSessionId = webhook?.sessionId || sessionId; // Fallback to current session if missing (legacy)
-
+            const targetSessionId = webhook?.sessionId || sessionId;
             await fetch(`/api/webhooks/${targetSessionId}/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
@@ -254,14 +284,10 @@ export default function WebhooksPage() {
     const toggleEventForWebhook = async (webhookId: string, eventId: string) => {
         const webhook = webhooks.find(w => w.id === webhookId);
         if (!webhook) return;
-
         const newEvents = webhook.events.includes(eventId)
             ? webhook.events.filter(e => e !== eventId)
             : [...webhook.events, eventId];
-
-        // Find webhook to get its session ID
         const targetSessionId = webhook.sessionId || sessionId;
-
         try {
             await fetch(`/api/webhooks/${targetSessionId}/${webhookId}`, {
                 method: "PUT",
@@ -282,7 +308,6 @@ export default function WebhooksPage() {
 
     const confirmDelete = async () => {
         if (!deleteId) return;
-
         try {
             const webhook = webhooks.find(w => w.id === deleteId);
             const targetSessionId = webhook?.sessionId || sessionId;
@@ -299,6 +324,21 @@ export default function WebhooksPage() {
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         toast.success("Copied to clipboard!");
+    };
+
+    // Format JSON for display
+    const formatJson = (obj: any): string => {
+        try {
+            return JSON.stringify(obj, null, 2);
+        } catch {
+            return String(obj);
+        }
+    };
+
+    // Format timestamp
+    const formatTime = (ts: string) => {
+        const d = new Date(ts);
+        return d.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
     };
 
     return (
@@ -337,11 +377,8 @@ export default function WebhooksPage() {
                             </>
                         )}
                         <Button onClick={() => {
-                            if (apiKey) {
-                                setShowRegenConfirm(true);
-                            } else {
-                                generateNewApiKey();
-                            }
+                            if (apiKey) setShowRegenConfirm(true);
+                            else generateNewApiKey();
                         }}>
                             <RefreshCw className="h-4 w-4 mr-2" />
                             {apiKey ? "Regenerate" : "Generate"}
@@ -354,7 +391,6 @@ export default function WebhooksPage() {
                     )}
                 </CardContent>
 
-                {/* API Key Regeneration Confirmation */}
                 <AlertDialog open={showRegenConfirm} onOpenChange={setShowRegenConfirm}>
                     <AlertDialogContent>
                         <AlertDialogHeader>
@@ -396,38 +432,23 @@ export default function WebhooksPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* New Webhook Form */}
                         {showNewForm && (
                             <Card className="border-dashed border-2">
-                                <CardHeader>
-                                    <CardTitle>New Webhook</CardTitle>
-                                </CardHeader>
+                                <CardHeader><CardTitle>New Webhook</CardTitle></CardHeader>
                                 <CardContent className="pt-4 space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Name</Label>
-                                            <Input
-                                                placeholder="My Server"
-                                                value={newName}
-                                                onChange={(e) => setNewName(e.target.value)}
-                                            />
+                                            <Input placeholder="My Server" value={newName} onChange={(e) => setNewName(e.target.value)} />
                                         </div>
                                         <div className="space-y-2">
                                             <Label>Webhook URL</Label>
-                                            <Input
-                                                placeholder="https://example.com/webhook"
-                                                value={newUrl}
-                                                onChange={(e) => setNewUrl(e.target.value)}
-                                            />
+                                            <Input placeholder="https://example.com/webhook" value={newUrl} onChange={(e) => setNewUrl(e.target.value)} />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Secret (optional, for HMAC signature)</Label>
-                                        <Input
-                                            placeholder="your-secret-key"
-                                            value={newSecret}
-                                            onChange={(e) => setNewSecret(e.target.value)}
-                                        />
+                                        <Input placeholder="your-secret-key" value={newSecret} onChange={(e) => setNewSecret(e.target.value)} />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Events</Label>
@@ -437,11 +458,8 @@ export default function WebhooksPage() {
                                                     <Switch
                                                         checked={newEvents.includes(event.id)}
                                                         onCheckedChange={(checked) => {
-                                                            if (checked) {
-                                                                setNewEvents([...newEvents, event.id]);
-                                                            } else {
-                                                                setNewEvents(newEvents.filter(e => e !== event.id));
-                                                            }
+                                                            if (checked) setNewEvents([...newEvents, event.id]);
+                                                            else setNewEvents(newEvents.filter(e => e !== event.id));
                                                         }}
                                                     />
                                                     <div>
@@ -453,19 +471,13 @@ export default function WebhooksPage() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2 justify-end">
-                                        <Button variant="ghost" onClick={() => {
-                                            setShowNewForm(false);
-                                            setNewName("");
-                                            setNewUrl("");
-                                            setNewSecret("");
-                                        }}>Cancel</Button>
+                                        <Button variant="ghost" onClick={() => setShowNewForm(false)}>Cancel</Button>
                                         <Button onClick={handleSaveWebhook}>Create Webhook</Button>
                                     </div>
                                 </CardContent>
                             </Card>
                         )}
 
-                        {/* Existing Webhooks */}
                         {loading ? (
                             <p className="text-center text-muted-foreground py-8">Loading...</p>
                         ) : webhooks.length === 0 ? (
@@ -473,63 +485,118 @@ export default function WebhooksPage() {
                                 No webhooks configured for this session. Click "Add Webhook" to create one.
                             </p>
                         ) : (
-                            webhooks.map((webhook) => (
-                                <Card key={webhook.id} className={webhook.isActive ? "" : "opacity-60"}>
-                                    <CardContent className="pt-4 space-y-3">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-semibold flex items-center gap-2">
-                                                    {webhook.name}
-                                                    <Badge variant={webhook.isActive ? "default" : "secondary"}>
-                                                        {webhook.isActive ? "Active" : "Inactive"}
-                                                    </Badge>
-                                                    {webhook.sessionId && (
-                                                        <Badge variant="outline" className="text-xs">
-                                                            {webhook.sessionId}
-                                                        </Badge>
-                                                    )}
-                                                </h3>
-                                                <p className="text-sm text-muted-foreground font-mono">{webhook.url}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Switch
-                                                    checked={webhook.isActive}
-                                                    onCheckedChange={(checked) => toggleWebhookActive(webhook.id, checked)}
-                                                />
-                                                <Button variant="ghost" size="sm" onClick={() => handleEdit(webhook)}>
-                                                    Edit
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => deleteWebhook(webhook.id)}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                        </div>
+                            webhooks.map((webhook) => {
+                                const isTesting = testingId === webhook.id;
+                                const testResult = testResults[webhook.id];
 
-                                        {/* Event Toggles */}
-                                        <div className="space-y-2">
-                                            <Label className="text-xs">Events (click to toggle)</Label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {AVAILABLE_EVENTS.map(event => (
-                                                    <Badge
-                                                        key={event.id}
-                                                        variant={webhook.events.includes(event.id) ? "default" : "outline"}
-                                                        className="cursor-pointer"
-                                                        onClick={() => toggleEventForWebhook(webhook.id, event.id)}
-                                                    >
-                                                        {event.label}
-                                                    </Badge>
-                                                ))}
+                                return (
+                                    <Card key={webhook.id} className={webhook.isActive ? "" : "opacity-60"}>
+                                        <CardContent className="pt-4 space-y-3">
+                                            {/* Header */}
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-semibold flex items-center gap-2">
+                                                        {webhook.name}
+                                                        <Badge variant={webhook.isActive ? "default" : "secondary"}>
+                                                            {webhook.isActive ? "Active" : "Inactive"}
+                                                        </Badge>
+                                                        {webhook.sessionId && (
+                                                            <Badge variant="outline" className="text-xs">{webhook.sessionId}</Badge>
+                                                        )}
+                                                    </h3>
+                                                    <p className="text-sm text-muted-foreground font-mono">{webhook.url}</p>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <Switch
+                                                        checked={webhook.isActive}
+                                                        onCheckedChange={(checked) => toggleWebhookActive(webhook.id, checked)}
+                                                    />
+                                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(webhook)}>Edit</Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => deleteWebhook(webhook.id)}>
+                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ))
+
+                                            {/* Event Toggles */}
+                                            <div className="space-y-2">
+                                                <Label className="text-xs">Events (click to toggle)</Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {AVAILABLE_EVENTS.map(event => (
+                                                        <Badge
+                                                            key={event.id}
+                                                            variant={webhook.events.includes(event.id) ? "default" : "outline"}
+                                                            className="cursor-pointer"
+                                                            onClick={() => toggleEventForWebhook(webhook.id, event.id)}
+                                                        >
+                                                            {event.label}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Test & Logs Buttons */}
+                                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleTestWebhook(webhook)}
+                                                    disabled={isTesting}
+                                                >
+                                                    {isTesting ? (
+                                                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                                    ) : (
+                                                        <Play className="h-4 w-4 mr-1" />
+                                                    )}
+                                                    Test
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => openLogDialog(webhook)}
+                                                >
+                                                    <History className="h-4 w-4 mr-1" />
+                                                    Logs
+                                                </Button>
+                                            </div>
+
+                                            {/* Test Result */}
+                                            {testResult && !testResult.testing && (
+                                                <div className={`p-3 rounded-md text-sm font-mono whitespace-pre-wrap ${
+                                                    testResult.success
+                                                        ? "bg-green-50 border border-green-200 text-green-800"
+                                                        : "bg-red-50 border border-red-200 text-red-800"
+                                                }`}>
+                                                    <div className="flex items-center gap-2 mb-1 font-semibold">
+                                                        {testResult.success ? "✓ Success" : "✗ Failed"}
+                                                        <span className="text-xs font-normal text-muted-foreground">
+                                                            {testResult.responseTimeMs}ms
+                                                        </span>
+                                                    </div>
+                                                    {testResult.statusCode && (
+                                                        <div>Status: {testResult.statusCode}</div>
+                                                    )}
+                                                    {testResult.error && (
+                                                        <div>Error: {testResult.error}</div>
+                                                    )}
+                                                    {testResult.responseBody && (
+                                                        <details className="mt-1">
+                                                            <summary className="cursor-pointer text-xs">Response Body</summary>
+                                                            <pre className="mt-1 text-xs overflow-x-auto">{testResult.responseBody}</pre>
+                                                        </details>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })
                         )}
                     </CardContent>
                 </Card>
             </SessionGuard>
 
-            {/* Edit Webhook Dialog Modal */}
+            {/* Edit Webhook Dialog */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
@@ -540,28 +607,16 @@ export default function WebhooksPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label>Name</Label>
-                                <Input
-                                    placeholder="My Server"
-                                    value={editName}
-                                    onChange={(e) => setEditName(e.target.value)}
-                                />
+                                <Input placeholder="My Server" value={editName} onChange={(e) => setEditName(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label>Webhook URL</Label>
-                                <Input
-                                    placeholder="https://example.com/webhook"
-                                    value={editUrl}
-                                    onChange={(e) => setEditUrl(e.target.value)}
-                                />
+                                <Input placeholder="https://example.com/webhook" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} />
                             </div>
                         </div>
                         <div className="space-y-2">
                             <Label>Secret (optional, for HMAC signature)</Label>
-                            <Input
-                                placeholder="your-secret-key"
-                                value={editSecret}
-                                onChange={(e) => setEditSecret(e.target.value)}
-                            />
+                            <Input placeholder="your-secret-key" value={editSecret} onChange={(e) => setEditSecret(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label>Events</Label>
@@ -571,11 +626,8 @@ export default function WebhooksPage() {
                                         <Switch
                                             checked={editEvents.includes(event.id)}
                                             onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                    setEditEvents([...editEvents, event.id]);
-                                                } else {
-                                                    setEditEvents(editEvents.filter(e => e !== event.id));
-                                                }
+                                                if (checked) setEditEvents([...editEvents, event.id]);
+                                                else setEditEvents(editEvents.filter(e => e !== event.id));
                                             }}
                                         />
                                         <div>
@@ -608,6 +660,17 @@ export default function WebhooksPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Webhook Log Dialog */}
+            {logDialogId && (
+                <WebhookLogDialog
+                    webhookId={logDialogId}
+                    webhookName={logDialogName}
+                    targetSessionId={logDialogSessionId}
+                    open={!!logDialogId}
+                    onClose={closeLogDialog}
+                />
+            )}
         </div>
     );
 }

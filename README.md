@@ -3,11 +3,13 @@
 # 🚀 WA-AKG: The Ultimate WhatsApp Gateway & Dashboard
 
 [![WhatsApp Bot](https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma&logoColor=white)](https://www.prisma.io/)
-[![Version](https://img.shields.io/badge/Version-1.3.0-blue?style=for-the-badge)](https://github.com/mrifqidaffaaditya/WA-AKG/releases)
-[![Beta Branch](https://img.shields.io/badge/Branch-Master-green?style=for-the-badge&logo=git)](https://github.com/mrifqidaffaaditya/WA-AKG)
+[![Version](https://img.shields.io/badge/Version-1.6.2-blue?style=for-the-badge)](https://github.com/mrifqidaffaaditya/WA-AKG/releases)
+[![Main Branch](https://img.shields.io/badge/Branch-Main-green?style=for-the-badge&logo=git)](https://github.com/mrifqidaffaaditya/WA-AKG)
+
+[![Active Apps](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi-wa-akg.aikeigroup.net%2Fapi%2Factive-apps&query=%24.activeCount&style=flat-square&color=25D366&logo=whatsapp&logoColor=white&label=)](https://api-wa-akg.aikeigroup.net/)
 
 **A professional, multi-session WhatsApp Gateway, Dashboard, and Automation System.**  
 Built with **Next.js 15**, **React**, and **Baileys** for high-performance messaging automation and real-time WhatsApp Bot Gateway services.
@@ -104,12 +106,12 @@ WA-AKG natively supports **n8n**! You can build complex, no-code/low-code WhatsA
 ## 🚀 Quick Installation
 
 ### 1. Prerequisites
-- Node.js 20+
-- PostgreSQL or MySQL
+- Node.js 20+ (Node.js 22 recommended)
+- MySQL or PostgreSQL
 - Git
-- Docker & Docker Compose (Optional, for Docker deployment)
+- PM2 (Installed globally: `npm install -g pm2`)
 
-### 2. Setup (Standard Setup)
+### 2. Setup
 ```bash
 # Clone and install
 git clone https://github.com/mrifqidaffaaditya/WA-AKG.git
@@ -118,38 +120,70 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your DATABASE_URL, AUTH_SECRET, NEXTAUTH_URL etc.
+# Edit .env with your DATABASE_URL, AUTH_SECRET, PORT, etc.
 
-# Push schema and create admin
+# Push schema and generate Prisma Client
 npm run db:push
+
+# Create SuperAdmin account
 npm run make-admin admin@example.com password123
 ```
 
-### 3. Run
+### 3. Run (Development)
 ```bash
-# Development
 npm run dev
-
-# Production
-npm run build && npm start
 ```
 
-### 🐋 Docker Deployment (Zero Configuration)
+### 4. Run (Production with PM2 - Recommended)
+We recommend deploying with **PM2** to run the app in the background and ensure it restarts automatically if the server rebooted or crashed.
 
-You can deploy the application and its MySQL database together using Docker Compose with zero initial configuration:
+#### Option A: Automatic Setup Script (Easiest)
+We provide a built-in [start.sh](file:///home/aditya/project/WA-AKG/start.sh) script that automates everything: checking the configuration, installing dependencies, syncing the database schema, compiling production assets, and starting or reloading PM2:
+```bash
+./start.sh
+```
 
-1. **Start Services**:
-   Navigate to the `web` directory and run:
+#### Option B: Manual Setup
+1. **Build the application**:
    ```bash
-   cd web
+   npm run build
+   ```
+
+2. **Start with PM2**:
+   Using the built-in [ecosystem.config.js](file:///home/aditya/project/WA-AKG/ecosystem.config.js) configuration file:
+   ```bash
+   pm2 start ecosystem.config.js
+   ```
+
+3. **Manage the process**:
+   - View status: `pm2 status`
+   - View logs: `pm2 logs wa-akg`
+   - Stop process: `pm2 stop wa-akg`
+   - Restart process: `pm2 restart wa-akg`
+
+4. **Enable auto-start on server boot**:
+   ```bash
+   pm2 startup
+   # Copy-paste the command outputted by the command above
+   pm2 save
+   ```
+
+---
+
+### 🐋 Alternative: Docker Deployment
+Although **PM2 is highly recommended**, you can also deploy using Docker Compose:
+
+1. **Prepare Environment**:
+   ```bash
+   cp .env.example .env
+   ```
+   Edit `.env` — set `DATABASE_URL` (points to the MySQL container), `AUTH_SECRET`, and other branding settings.
+
+2. **Start Services**:
+   ```bash
    docker compose up -d
    ```
-   This automatically builds the Next.js application, pulls MySQL 8.0, creates database tables, and provisions the default SuperAdmin user:
-   - **Email**: `admin@example.com`
-   - **Password**: `admin123`
-
-2. **Customization (Optional)**:
-   To customize settings, edit the environment variables directly in `web/docker-compose.yml` (e.g. `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `AUTH_SECRET`, `TZ`, etc.), or copy `.env.example` to `.env` in the `web` folder.
+   This spins up the MySQL database container alongside the Next.js gateway application.
 
 ---
 
@@ -197,9 +231,12 @@ curl -X POST http://localhost:3000/api/messages/session_01/62812345678@s.whatsap
 ---
 
 ## 🛡️ Security
-- **API Key Auth**: Secured endpoints using `X-API-Key`.
-- **RBAC**: Multi-role support (`SUPERADMIN`, `OWNER`, `STAFF`).
-- **Encrypted Storage**: Sensitive credentials are secure with bcrypt and NextAuth.js.
+- **API Key Auth**: Secured endpoints using `X-API-Key` header.
+- **RBAC**: Multi-role support (`SUPERADMIN`, `STAFF`, `USER`).
+- **Encrypted Passwords**: All passwords hashed with bcrypt.
+- **JWT Encryption**: Session tokens signed with `AUTH_SECRET` (wajib diisi — tidak ada fallback).
+- **Input Validation**: Zod schemas on critical endpoints.
+- **Media Protection**: Path traversal prevention, session-scoped media access.
 
 ---
 

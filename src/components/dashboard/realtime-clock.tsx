@@ -15,8 +15,8 @@ export function RealtimeClock() {
         fetch('/api/settings/system')
             .then(r => r.json())
             .then(data => {
-                if (data && data.timezone) {
-                    setTimezone(data.timezone);
+                if (data && data.data && data.data.timezone) {
+                    setTimezone(data.data.timezone);
                 }
             })
             .catch(() => { });
