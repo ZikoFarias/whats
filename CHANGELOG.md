@@ -1,3 +1,37 @@
+## [v1.7.0-beta.1] - 2026-09-21
+
+### Added
+- **Pure Baileys v7 Core**: Upgraded WhatsApp engine to pure `@whiskeysockets/baileys@7.0.0-rc14` completely removing all `patch-package` dependencies for clean open-source distribution.
+- **Native Flow Interactive Messages**: Full support for sending and receiving modern WhatsApp interactive messages (Native Flow buttons):
+  - `quick_reply`: Interactive quick action buttons.
+  - `cta_url`: Direct external web links.
+  - `cta_call`: Direct telephone call actions.
+  - `cta_copy`: One-click copy code / voucher tokens.
+  - `single_select`: Dynamic list menu with sections and rows.
+- **Interactive Message Tester Dashboard**: Dedicated UI at `/dashboard/interactive` featuring 1-click test triggers and custom JSON/form builders.
+- **Chat Window Interactive Dialog**: Integrated interactive message builder dialog (`✨`) into `/dashboard/chat` window.
+- **Interactive REST Endpoint**: Added `POST /api/messages/[sessionId]/[jid]/interactive` with complete validation and OpenAPI/Swagger documentation.
+- **Binary Stanza Injection**: Injected WhatsApp `<biz>` and `<bot>` binary nodes via `additionalNodes` at protocol level for native button rendering across WhatsApp Web, Android, and iOS.
+
+### Changed
+- **User Role Architecture (`OWNER` → `USER`)**: Migrated user RBAC hierarchy to `SUPERADMIN` > `STAFF` > `USER` (default least privilege: `USER`). All Prisma schemas, Zod validators, API routes, and dashboard pages updated accordingly.
+- **Automated Database Migrations on Startup**: Embedded runtime auto-migration in `src/server/index.ts` and `scripts/migrate.js` to automatically convert legacy database enum values and records without manual SQL execution.
+- **Telemetry Privacy Hardening**: Replaced private instance deployment hostname/URL in monitoring heartbeat with official WA-AKG application version (`v1.7.0-beta.1`) and added `ENABLE_TELEMETRY` opt-out support.
+- **Pure Interactive Payload**: Removed legacy `viewOnceMessage` wrapping in favor of pure `interactiveMessage` stanzas to ensure button visibility on modern WhatsApp clients.
+- **Real-Time Store Sync**: Interactive messages sent via `relayMessage` are now automatically stored in SQLite database and emitted via Socket.IO to the web dashboard.
+- **Dev Server Stability**: Added Webpack fallback in `src/server/index.ts` to eliminate Turbopack NTFS colon chunk naming panic (`os error 22`) in dev mode.
+
+### Security
+- **Comprehensive Vulnerability Remediation**: Remediated 13 security review findings from external evaluation:
+  - **Socket.IO Hardening**: Added JWT & API key authentication middleware (`io.use`), session authorization checks, and restricted CORS origins.
+  - **SSRF & LFI Mitigation**: Implemented strict safe fetching (`safeFetchBuffer`) with private IP/cloud-metadata blocking (`validateSafeUrl`) for media downloads, webhooks, chat, and scheduler.
+  - **Auth & Secrets Protection**: Encrypted WhatsApp `AuthState` session keys at rest with AES-256-GCM, changed default role to `USER`, disabled public registration by default, and migrated API key generation to CSPRNG.
+  - **Swagger & API Security**: Eliminated client-side credentials from Swagger UI, enforced session checks, and strengthened defense-in-depth API key validation in proxy middleware.
+  - **Media & Container Hardening**: Sanitized mimetype file extensions to prevent path traversal, enforced session prefix ownership, and migrated Docker runner to non-root user `node`.
+
+### Fixed
+- **Dev Server Startup Stability**: Decoupled NextAuth evaluation from Socket.IO and session access queries to eliminate Next.js 16 `Invariant: AsyncLocalStorage accessed in runtime where it is not available` crash on server startup.
+
 ## [v1.6.4] - 2026-07-12
 
 ### Added
